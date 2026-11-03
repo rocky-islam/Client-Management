@@ -135,6 +135,9 @@ export async function GET(
       };
     });
 
+    // Ensure newly created / added projects are always displayed at the top
+    projectsList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
     return NextResponse.json({
       year,
       month,

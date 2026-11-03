@@ -14,6 +14,7 @@ import {
   CheckSquare,
   Archive,
   Users,
+  Briefcase,
   CreditCard,
   Receipt,
   Target,
@@ -61,6 +62,7 @@ const navSections = [
     title: 'BUSINESS MANAGEMENT',
     items: [
       { name: 'Clients', href: '/clients', icon: Users },
+      { name: 'Profiles', href: '/profiles', icon: Briefcase },
       { name: 'Revenue & Payments', href: '/revenue', icon: CreditCard },
       { name: 'Expenses', href: '/expenses', icon: Receipt },
       { name: 'Targets', href: '/targets', icon: Target },

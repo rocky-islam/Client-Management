@@ -33,7 +33,10 @@ export default async function ProjectsPage({
         where: { isActive: true },
       },
     },
-    orderBy: { projectDate: 'desc' },
+    orderBy: [
+      { createdAt: 'desc' },
+      { projectDate: 'desc' },
+    ],
   });
 
   // Calculate quick stats for header cards

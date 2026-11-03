@@ -176,12 +176,13 @@ export function ProjectForm({ initialData, isEditing = false }: ProjectFormProps
         },
   });
 
-  // Fetch client list and distinct profiles from existing projects
+  // Fetch client list and distinct profiles from existing projects & Profile database
   const fetchClientsAndProfiles = async () => {
     try {
-      const [resClients, resProjects] = await Promise.all([
+      const [resClients, resProjects, resProfiles] = await Promise.all([
         fetch('/api/clients'),
         fetch('/api/projects'),
+        fetch('/api/profiles'),
       ]);
 
       if (resClients.ok) {
@@ -189,6 +190,14 @@ export function ProjectForm({ initialData, isEditing = false }: ProjectFormProps
         setClients(clientJson.clients || []);
         if (clientJson.clients?.length > 0 && !watch('clientId')) {
           setValue('clientId', clientJson.clients[0].id);
+        }
+      }
+
+      if (resProfiles.ok) {
+        const profileJson = await resProfiles.json();
+        const apiProfiles = profileJson.profiles?.map((p: any) => p.name).filter(Boolean) || [];
+        if (apiProfiles.length > 0) {
+          setProfiles((prev) => Array.from(new Set([...prev, ...apiProfiles])));
         }
       }
 
@@ -260,13 +269,24 @@ export function ProjectForm({ initialData, isEditing = false }: ProjectFormProps
   };
 
   // Quick Profile Addition
-  const handleAddCustomProfile = (e: React.FormEvent) => {
+  const handleAddCustomProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     const val = customProfileInput.trim();
     if (!val) {
       toast.error('Please enter a profile name');
       return;
     }
+
+    try {
+      await fetch('/api/profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: val, platform: 'Freelance' }),
+      });
+    } catch (e) {
+      // Non-fatal, local selection still proceeds
+    }
+
     if (!profiles.includes(val)) {
       setProfiles((prev) => [...prev, val]);
     }

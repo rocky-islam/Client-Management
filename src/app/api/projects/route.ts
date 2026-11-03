@@ -78,7 +78,10 @@ export async function GET(request: Request) {
           where: { status: 'COMPLETED' },
         },
       },
-      orderBy: { projectDate: 'desc' },
+      orderBy: [
+        { createdAt: 'desc' },
+        { projectDate: 'desc' },
+      ],
     });
 
     return NextResponse.json({ projects });

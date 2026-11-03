@@ -3,7 +3,7 @@ import prisma from './prisma';
 export interface LogActivityParams {
   userId: string;
   actionType: string;
-  entityType: 'PROJECT' | 'CLIENT' | 'PAYMENT' | 'EXPENSE' | 'INVOICE' | 'TARGET' | 'TASK' | 'AUTH';
+  entityType: 'PROJECT' | 'CLIENT' | 'PAYMENT' | 'EXPENSE' | 'INVOICE' | 'TARGET' | 'TASK' | 'AUTH' | 'SETTINGS' | 'PROFILE';
   entityId: string;
   description: string;
   oldValues?: any;
