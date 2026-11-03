@@ -1,6 +1,6 @@
 import assert from 'assert';
 import { calculateTimeLeft, calculateOutstandingAmount, calculateAchievement, isOverdue } from '../src/lib/calculations';
-import { projectSchema } from '../src/lib/validations';
+import { projectSchema, targetSchema } from '../src/lib/validations';
 import { hashPassword, verifyPassword } from '../src/lib/auth';
 
 console.log('🧪 Starting Rocky Business Manager Unit & Business Logic Test Suite...\n');
@@ -89,7 +89,19 @@ console.log('\n--- TEST 3: Targets & Achievement Benchmarks ---');
   assert.strictEqual(calculateAchievement(0, 5000), 0);
   assert.strictEqual(calculateAchievement(1000, 0), 0);
 
-  console.log('✔ Target calculations passed!');
+  // Quarterly calculation (3 months per quarter)
+  const q4Months = [10, 11, 12];
+  const q4MonthlyRevenue = { 10: 1200, 11: 1500, 12: 1300 };
+  const q4Actual = q4Months.reduce((s, m) => s + (q4MonthlyRevenue[m as keyof typeof q4MonthlyRevenue] || 0), 0);
+  assert.strictEqual(q4Actual, 4000);
+  assert.strictEqual(calculateAchievement(q4Actual, 5000), 80);
+
+  // Yearly calculation (all 12 months)
+  const annualTarget = 48000;
+  const annualActual = 36000;
+  assert.strictEqual(calculateAchievement(annualActual, annualTarget), 75);
+
+  console.log('✔ Target calculations passed (Monthly, Quarterly 3-Month, and Yearly)!');
 }
 
 // 4. AUTHENTICATION & SECURITY TESTS
@@ -176,7 +188,33 @@ console.log('\n--- TEST 6: Zod Validation Schemas ---');
     projectSchema.parse({ ...validProject, value: -50 });
   });
 
-  console.log('✔ Validation schemas passed!');
+  // Target schema tests (Monthly, Quarterly, Yearly)
+  const monthlyTarget = targetSchema.parse({
+    targetType: 'MONTHLY_REVENUE',
+    targetAmount: 5000,
+    year: 2026,
+    month: 11,
+  });
+  assert.strictEqual(monthlyTarget.targetAmount, 5000);
+  assert.strictEqual(monthlyTarget.month, 11);
+
+  const quarterlyTarget = targetSchema.parse({
+    targetType: 'QUARTERLY_REVENUE',
+    targetAmount: 15000,
+    year: 2026,
+    month: 4, // Q4
+  });
+  assert.strictEqual(quarterlyTarget.month, 4);
+
+  const yearlyTarget = targetSchema.parse({
+    targetType: 'YEARLY_REVENUE',
+    targetAmount: 60000,
+    year: 2026,
+    month: 0, // Full Year
+  });
+  assert.strictEqual(yearlyTarget.month, 0);
+
+  console.log('✔ Validation schemas passed (Project, Monthly/Quarterly/Yearly Targets)!');
 }
 
 testAuth().then(() => {

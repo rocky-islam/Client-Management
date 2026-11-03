@@ -81,7 +81,7 @@ export const targetSchema = z.object({
   targetType: z.string().min(1, 'Target type is required'),
   targetAmount: z.coerce.number().positive('Target amount must be greater than zero'),
   currency: z.string().default('USD'),
-  month: z.coerce.number().min(1).max(12).optional().nullable(),
+  month: z.coerce.number().min(0).max(12).optional().nullable(),
   year: z.coerce.number().int(),
   metricType: z.string().default('RECEIVED_REVENUE'),
 });
