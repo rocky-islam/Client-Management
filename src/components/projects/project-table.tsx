@@ -110,10 +110,10 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
     orderId: true,
     value: true,
     orderStatus: true,
-    deliveryStatementDate: true,
-    remark: true,
     deadline: true,
     timeLeft: true,
+    deliveryStatementDate: true,
+    remark: true,
     salesType: true,
     actions: true,
     // Optional columns hidden initially
@@ -199,9 +199,10 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
       'Value',
       'Currency',
       'Order Status',
+      'Project Deadline',
+      'Time Left',
       'Delivery Statement Date',
       'Remark',
-      'Project Deadline',
       'Sales Type',
       'Category',
     ];
@@ -214,9 +215,10 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
       p.value,
       p.currency,
       p.orderStatus,
+      formatDate(p.deadline),
+      calculateTimeLeft(p.deadline, p.orderStatus, (p as any).actualDeliveryDate).text,
       formatDate(p.deliveryStatementDate),
       `"${p.remark || ''}"`,
-      formatDate(p.deadline),
       p.salesType,
       `"${p.category || ''}"`,
     ]);
@@ -395,43 +397,7 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
           );
         },
       },
-      // 7. Delivery Statement Date
-      {
-        id: 'deliveryStatementDate',
-        accessorKey: 'deliveryStatementDate',
-        meta: {
-          className: 'w-[145px] min-w-[135px] whitespace-nowrap text-center',
-        },
-        header: () => <div className="text-center">Delivery Statement Date</div>,
-        cell: ({ row }) => (
-          <div className="text-center">
-            <span className="text-xs text-muted-foreground whitespace-nowrap font-medium">
-              {formatDate(row.getValue('deliveryStatementDate'))}
-            </span>
-          </div>
-        ),
-      },
-      // 8. Remark
-      {
-        id: 'remark',
-        accessorKey: 'remark',
-        meta: {
-          className: 'min-w-[190px] max-w-[280px]',
-        },
-        header: 'Remark',
-        cell: ({ row }) => {
-          const remark = row.getValue('remark') as string;
-          return (
-            <span
-              className="text-xs text-muted-foreground max-w-[260px] truncate block font-normal"
-              title={remark || ''}
-            >
-              {remark || '-'}
-            </span>
-          );
-        },
-      },
-      // 9. Project Deadline
+      // 7. Project Deadline (Now before Delivery Statement Date)
       {
         id: 'deadline',
         accessorKey: 'deadline',
@@ -459,7 +425,7 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
           </div>
         ),
       },
-      // 10. Time Left (Dynamically calculated, never stored)
+      // 8. Time Left (Now before Delivery Statement Date)
       {
         id: 'timeLeft',
         meta: {
@@ -480,6 +446,42 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
                 {res.text}
               </span>
             </div>
+          );
+        },
+      },
+      // 9. Delivery Statement Date
+      {
+        id: 'deliveryStatementDate',
+        accessorKey: 'deliveryStatementDate',
+        meta: {
+          className: 'w-[145px] min-w-[135px] whitespace-nowrap text-center',
+        },
+        header: () => <div className="text-center">Delivery Statement Date</div>,
+        cell: ({ row }) => (
+          <div className="text-center">
+            <span className="text-xs text-muted-foreground whitespace-nowrap font-medium">
+              {formatDate(row.getValue('deliveryStatementDate'))}
+            </span>
+          </div>
+        ),
+      },
+      // 10. Remark
+      {
+        id: 'remark',
+        accessorKey: 'remark',
+        meta: {
+          className: 'min-w-[190px] max-w-[280px]',
+        },
+        header: 'Remark',
+        cell: ({ row }) => {
+          const remark = row.getValue('remark') as string;
+          return (
+            <span
+              className="text-xs text-muted-foreground max-w-[260px] truncate block font-normal"
+              title={remark || ''}
+            >
+              {remark || '-'}
+            </span>
           );
         },
       },
