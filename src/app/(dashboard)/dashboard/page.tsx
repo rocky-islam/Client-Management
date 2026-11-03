@@ -27,6 +27,7 @@ import { Progress } from '@/components/ui/progress';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { calculateTimeLeft } from '@/lib/calculations';
 import { PROJECT_STATUSES } from '@/lib/constants';
+import { MonthlyGoalBanner } from '@/components/dashboard/monthly-goal-banner';
 import {
   ResponsiveContainer,
   BarChart,
@@ -112,6 +113,9 @@ export default function DashboardOverviewPage() {
           </Link>
         </div>
       </div>
+
+      {/* Monthly Revenue Goal Progress Banner */}
+      <MonthlyGoalBanner onTargetUpdated={fetchAnalytics} />
 
       {/* 12 Primary KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">

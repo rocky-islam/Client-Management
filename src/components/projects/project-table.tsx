@@ -553,6 +553,7 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
   const [salesTypeFilter, setSalesTypeFilter] = useState<string>('ALL');
   const [rowSelection, setRowSelection] = useState({});
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const [batchLoading, setBatchLoading] = useState(false);
 
   // Column visibility state (primary 12 columns visible by default)
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
@@ -768,6 +769,89 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
     link.click();
     document.body.removeChild(link);
     toast.success('Exported projects to CSV');
+  };
+
+  const handleBatchAction = async (action: string, payload?: any) => {
+    const selectedRows = table.getSelectedRowModel().rows;
+    const ids = selectedRows.map((r) => r.original.id);
+    if (ids.length === 0) return;
+
+    setBatchLoading(true);
+    try {
+      const res = await fetch('/api/projects/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids, action, payload }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Batch action failed');
+
+      toast.success(data.message || `Updated ${ids.length} projects successfully`);
+      table.toggleAllRowsSelected(false);
+      onRefresh ? onRefresh() : router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || 'Error executing batch action');
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
+  const handleBatchDelete = () => {
+    const selectedRows = table.getSelectedRowModel().rows;
+    const count = selectedRows.length;
+    if (!confirm(`Are you sure you want to move ${count} selected project(s) to trash?`)) {
+      return;
+    }
+    handleBatchAction('DELETE');
+  };
+
+  const handleExportSelected = () => {
+    const selectedRows = table.getSelectedRowModel().rows.map((r) => r.original);
+    if (selectedRows.length === 0) return;
+
+    const headers = [
+      'Date',
+      'Client Name',
+      'Profile Name',
+      'Order ID',
+      'Value',
+      'Currency',
+      'Order Status',
+      'Project Deadline',
+      'Delivery Statement Date',
+      'Remark',
+      'Sales Type',
+      'Category',
+    ];
+
+    const rows = selectedRows.map((p) => [
+      formatDate(p.projectDate),
+      `"${p.client?.name || ''}"`,
+      `"${p.profileName || ''}"`,
+      `"${p.orderId || ''}"`,
+      p.value,
+      p.currency,
+      p.orderStatus,
+      formatDate(p.deadline),
+      formatDate(p.deliveryStatementDate),
+      `"${p.remark || ''}"`,
+      p.salesType,
+      `"${p.category || ''}"`,
+    ]);
+
+    const csvContent =
+      'data:text/csv;charset=utf-8,' +
+      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `rocky-selected-projects-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Exported ${selectedRows.length} selected projects to CSV`);
   };
 
   // Define columns in the exact required sequence:
@@ -1599,6 +1683,164 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
           </Button>
         </div>
       </div>
+
+      {/* Floating Table Bulk Action Bar (Responsive) */}
+      {table.getSelectedRowModel().rows.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-primary/30 bg-card/95 px-4 py-2.5 shadow-2xl backdrop-blur-md ring-2 ring-primary/20 max-w-[95vw] sm:max-w-fit animate-in fade-in slide-in-from-bottom-5 text-xs text-foreground">
+          {/* Selected badge and count */}
+          <div className="flex items-center gap-2">
+            <Badge className="bg-primary text-primary-foreground font-bold px-2 py-0.5 text-xs shadow-2xs">
+              {table.getSelectedRowModel().rows.length}
+            </Badge>
+            <span className="font-semibold text-xs whitespace-nowrap">
+              project{table.getSelectedRowModel().rows.length === 1 ? '' : 's'} selected
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => table.toggleAllRowsSelected(false)}
+              className="h-6 text-[11px] px-1.5 text-muted-foreground hover:text-foreground"
+            >
+              Clear
+            </Button>
+          </div>
+
+          <div className="h-4 w-px bg-border/80 hidden sm:block" />
+
+          {/* Actions group */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* 1. Bulk Status Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  disabled={batchLoading}
+                  className="h-8 text-xs gap-1.5 font-medium shadow-xs"
+                >
+                  {batchLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                  )}
+                  <span>Status</span>
+                  <ChevronDown className="h-3 w-3 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-48 text-xs">
+                <DropdownMenuLabel className="text-[11px]">Set Status For Selected</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => handleBatchAction('UPDATE_STATUS', { orderStatus: 'DELIVERED' })}
+                  className="flex items-center gap-2 cursor-pointer font-semibold text-emerald-600 focus:text-emerald-700"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <span>Mark as Delivered</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleBatchAction('UPDATE_STATUS', { orderStatus: 'WIP' })}
+                  className="flex items-center gap-2 cursor-pointer text-amber-600"
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>Work in Progress (WIP)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleBatchAction('UPDATE_STATUS', { orderStatus: 'IN_REVIEW' })}
+                  className="flex items-center gap-2 cursor-pointer text-blue-600"
+                >
+                  <span>In Review</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleBatchAction('UPDATE_STATUS', { orderStatus: 'REVISION' })}
+                  className="flex items-center gap-2 cursor-pointer text-indigo-600"
+                >
+                  <span>Revision</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleBatchAction('UPDATE_STATUS', { orderStatus: 'CANCELLED' })}
+                  className="flex items-center gap-2 cursor-pointer text-rose-600"
+                >
+                  <span>Cancelled</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* 2. Bulk Extend Deadlines */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={batchLoading}
+                  className="h-8 text-xs gap-1.5 font-medium shadow-xs hover:border-primary"
+                >
+                  <Calendar className="h-3.5 w-3.5 text-primary" />
+                  <span>Extend Deadlines</span>
+                  <ChevronDown className="h-3 w-3 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-44 text-xs">
+                <DropdownMenuLabel className="text-[11px]">Extend All Deadlines By</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => handleBatchAction('EXTEND_DEADLINE', { daysToAdd: 1 })}
+                  className="cursor-pointer"
+                >
+                  +1 Day
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleBatchAction('EXTEND_DEADLINE', { daysToAdd: 2 })}
+                  className="cursor-pointer"
+                >
+                  +2 Days
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleBatchAction('EXTEND_DEADLINE', { daysToAdd: 3 })}
+                  className="cursor-pointer"
+                >
+                  +3 Days
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleBatchAction('EXTEND_DEADLINE', { daysToAdd: 7 })}
+                  className="cursor-pointer font-semibold text-primary"
+                >
+                  +1 Week (+7 Days)
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleBatchAction('EXTEND_DEADLINE', { daysToAdd: 14 })}
+                  className="cursor-pointer"
+                >
+                  +2 Weeks (+14 Days)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* 3. Export Selected to CSV */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportSelected}
+              className="h-8 text-xs gap-1.5 shadow-xs"
+              title="Export selected rows to CSV"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Export CSV</span>
+            </Button>
+
+            {/* 4. Batch Delete */}
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={batchLoading}
+              onClick={handleBatchDelete}
+              className="h-8 text-xs gap-1.5 shadow-xs"
+              title="Move selected projects to trash"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Delete</span>
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

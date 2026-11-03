@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { FolderKanban, Clock, CheckCircle2, AlertTriangle, Flame } from 'lucide-react';
 import { isOverdue } from '@/lib/calculations';
 import { differenceInCalendarDays, startOfDay } from 'date-fns';
+import { MonthlyGoalBanner } from '@/components/dashboard/monthly-goal-banner';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,6 +76,9 @@ export default async function ProjectsPage({
             : 'Track client orders, statuses, deadlines, delivery statement dates, and project progress'}
         </p>
       </div>
+
+      {/* Monthly Revenue Goal Progress Banner */}
+      {!isArchived && <MonthlyGoalBanner />}
 
       {/* Mini KPI summary */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
