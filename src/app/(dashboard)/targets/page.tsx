@@ -462,7 +462,7 @@ export default function TargetsPage() {
             }`}
           >
             <Layers className="h-3.5 w-3.5" />
-            <span>Quarterly Earn (3 মাস = ১ কোয়ার্টার)</span>
+            <span>Quarterly Targets (4 Quarters)</span>
           </button>
           <button
             type="button"
@@ -474,7 +474,7 @@ export default function TargetsPage() {
             }`}
           >
             <Award className="h-3.5 w-3.5" />
-            <span>Yearly Earn (বাৎসরিক আয়)</span>
+            <span>Yearly Targets (Annual)</span>
           </button>
         </div>
 
@@ -670,7 +670,7 @@ export default function TargetsPage() {
         </div>
       )}
 
-      {/* TAB 3: YEARLY TARGETS & PERFORMANCE (বাৎসরিক আয় ও বিস্তারিত) */}
+      {/* TAB 3: YEARLY TARGETS & PERFORMANCE (Annual Breakdown) */}
       {activeTab === 'yearly' && (
         <div className="space-y-6 animate-in fade-in duration-200">
           {/* Master Annual Hero Card */}

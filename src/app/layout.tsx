@@ -18,6 +18,32 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                if (typeof window !== 'undefined') {
+                  window.addEventListener('error', function(event) {
+                    var source = (event.filename || '') + ' ' + ((event.error && event.error.stack) || '');
+                    if (source.indexOf('chrome-extension:') !== -1 || source.indexOf('moz-extension:') !== -1 || source.indexOf('executors') !== -1) {
+                      event.stopImmediatePropagation();
+                      event.preventDefault();
+                    }
+                  }, true);
+                  window.addEventListener('unhandledrejection', function(event) {
+                    var reason = (event.reason && (event.reason.stack || event.reason.message)) || '';
+                    if (reason.indexOf('chrome-extension:') !== -1 || reason.indexOf('moz-extension:') !== -1) {
+                      event.stopImmediatePropagation();
+                      event.preventDefault();
+                    }
+                  }, true);
+                }
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className={inter.className}>
         <ThemeProvider
           attribute="class"
@@ -32,4 +58,3 @@ export default function RootLayout({
     </html>
   );
 }
-
