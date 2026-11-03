@@ -1,0 +1,391 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import {
+  Users,
+  UserPlus,
+  Search,
+  ExternalLink,
+  Mail,
+  Building,
+  DollarSign,
+  Briefcase,
+  Loader2,
+  MoreHorizontal,
+  Edit,
+  Trash2,
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Label } from '@/components/ui/label';
+import { formatCurrency, formatDate } from '@/lib/utils';
+import { toast } from 'sonner';
+
+export default function ClientsPage() {
+  const [clients, setClients] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Form State
+  const [name, setName] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [email, setEmail] = useState('');
+  const [country, setCountry] = useState('');
+  const [contactInfo, setContactInfo] = useState('');
+  const [profileLink, setProfileLink] = useState('');
+  const [notes, setNotes] = useState('');
+
+  const fetchClients = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/clients?search=${encodeURIComponent(search)}`);
+      const data = await res.json();
+      if (res.ok) {
+        setClients(data.clients || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchClients();
+  }, [search]);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      toast.error('Client name is required');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          companyName: companyName.trim() || undefined,
+          email: email.trim() || undefined,
+          country: country.trim() || undefined,
+          contactInfo: contactInfo.trim() || undefined,
+          profileLink: profileLink.trim() || undefined,
+          notes: notes.trim() || undefined,
+          clientStatus: 'ACTIVE',
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create client');
+
+      toast.success(`Client "${data.client.name}" created successfully`);
+      setModalOpen(false);
+      setName('');
+      setCompanyName('');
+      setEmail('');
+      setCountry('');
+      setContactInfo('');
+      setProfileLink('');
+      setNotes('');
+      fetchClients();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const totalClients = clients.length;
+  const repeatClients = clients.filter((c) => c.isRepeatClient).length;
+  const totalLifetimeValue = clients.reduce((s, c) => s + (c.totalValue || 0), 0);
+  const totalOutstanding = clients.reduce((s, c) => s + (c.outstanding || 0), 0);
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <Users className="h-6 w-6 text-primary" />
+            Client Directory & Portfolio
+          </h1>
+          <p className="text-xs text-muted-foreground">
+            Manage freelance clients, lifetime values, order history, and contact coordinates
+          </p>
+        </div>
+
+        <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="h-9 text-xs gap-1.5 shadow-sm">
+              <UserPlus className="h-4 w-4" />
+              <span>Add Client</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <form onSubmit={handleCreate}>
+              <DialogHeader>
+                <DialogTitle className="text-base">Add New Client</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3 py-3 text-xs">
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Client Name *</Label>
+                  <Input
+                    required
+                    placeholder="e.g. Alex Johnson"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Company Name</Label>
+                    <Input
+                      placeholder="e.g. Apex Tech"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Country</Label>
+                    <Input
+                      placeholder="e.g. United States"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Email Address</Label>
+                  <Input
+                    type="email"
+                    placeholder="alex@apextech.io"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Phone / WhatsApp</Label>
+                    <Input
+                      placeholder="+1 (555) 234-5678"
+                      value={contactInfo}
+                      onChange={(e) => setContactInfo(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Profile URL</Label>
+                    <Input
+                      placeholder="https://upwork.com"
+                      value={profileLink}
+                      onChange={(e) => setProfileLink(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Internal Notes</Label>
+                  <Input
+                    placeholder="Preferences, preferred tech stack, timezone..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  onClick={() => setModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button size="sm" type="submit" disabled={submitting}>
+                  {submitting ? 'Creating...' : 'Save Client'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Card className="border-border/60">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-primary/10 text-primary">
+              <Users className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground font-medium">Total Clients</p>
+              <p className="text-lg font-bold text-foreground">{totalClients}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/60">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-indigo-500/10 text-indigo-600">
+              <Briefcase className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground font-medium">Repeat Clients</p>
+              <p className="text-lg font-bold text-foreground">{repeatClients}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/60">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-600">
+              <DollarSign className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground font-medium">Total Lifetime Value</p>
+              <p className="text-lg font-bold text-foreground">
+                {formatCurrency(totalLifetimeValue, 'USD')}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/60">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-600">
+              <DollarSign className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground font-medium">Outstanding Balances</p>
+              <p className="text-lg font-bold text-foreground">
+                {formatCurrency(totalOutstanding, 'USD')}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Search and Table */}
+      <div className="space-y-4">
+        <div className="relative max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by client name, company, email, country..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-9 text-xs"
+          />
+        </div>
+
+        <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs">Client</TableHead>
+                <TableHead className="text-xs">Company / Country</TableHead>
+                <TableHead className="text-xs">Orders</TableHead>
+                <TableHead className="text-xs">Total Value</TableHead>
+                <TableHead className="text-xs">Received</TableHead>
+                <TableHead className="text-xs">Outstanding</TableHead>
+                <TableHead className="text-xs">Status</TableHead>
+                <TableHead className="text-xs text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="h-32 text-center">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+                  </TableCell>
+                </TableRow>
+              ) : clients.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="h-32 text-center text-xs text-muted-foreground">
+                    No clients found. Click "Add Client" to register one.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                clients.map((c) => (
+                  <TableRow key={c.id} className="hover:bg-muted/40 transition-colors text-xs">
+                    <TableCell>
+                      <Link
+                        href={`/clients/${c.id}`}
+                        className="font-semibold text-primary hover:underline block"
+                      >
+                        {c.name}
+                      </Link>
+                      {c.email && (
+                        <span className="text-[11px] text-muted-foreground">{c.email}</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-xs text-foreground">{c.companyName || '-'}</div>
+                      <span className="text-[10px] text-muted-foreground">{c.country || '-'}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="text-[11px]">
+                        {c.totalOrders} {c.totalOrders === 1 ? 'order' : 'orders'}
+                      </Badge>
+                      {c.isRepeatClient && (
+                        <span className="ml-1 text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">
+                          Repeat
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-semibold">
+                      {formatCurrency(c.totalValue, 'USD')}
+                    </TableCell>
+                    <TableCell className="font-semibold text-emerald-600 dark:text-emerald-400">
+                      {formatCurrency(c.totalReceived, 'USD')}
+                    </TableCell>
+                    <TableCell className="font-semibold text-amber-600 dark:text-amber-400">
+                      {formatCurrency(c.outstanding, 'USD')}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-[10px]">
+                        {c.clientStatus}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Link href={`/clients/${c.id}`}>
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                          View
+                        </Button>
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    </div>
+  );
+}

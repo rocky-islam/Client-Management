@@ -1,0 +1,292 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String         @id @default(cuid())
+  email           String         @unique
+  passwordHash    String
+  name            String
+  businessName    String         @default("Rocky Freelance Studio")
+  avatarUrl       String?
+  defaultCurrency String         @default("USD")
+  baseCurrency    String         @default("USD")
+  timezone        String         @default("Asia/Dhaka")
+  dateFormat      String         @default("yyyy-MM-dd")
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  clients         Client[]
+  projects        Project[]
+  projectMonths   ProjectMonth[]
+  payments        Payment[]
+  expenses        Expense[]
+  targets         Target[]
+  tasks           ProjectTask[]
+  invoices        Invoice[]
+  activityLogs    ActivityLog[]
+  notifications   Notification[]
+  projectNotes    ProjectNote[]
+}
+
+model Client {
+  id           String    @id @default(cuid())
+  userId       String
+  name         String
+  companyName  String?
+  email        String?
+  country      String?
+  contactInfo  String?
+  profileLink  String?
+  clientStatus String    @default("ACTIVE") // ACTIVE, INACTIVE, LEAD
+  notes        String?
+  isDeleted    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects     Project[]
+  payments     Payment[]
+  invoices     Invoice[]
+
+  @@index([userId])
+  @@index([userId, isDeleted])
+}
+
+model Project {
+  id                    String         @id @default(cuid())
+  userId                String
+  clientId              String
+  name                  String
+  projectDate           DateTime       // Order Date
+  category              String         @default("Web Development")
+  profileName           String         // e.g. "Fiverr", "Upwork", "Direct Client"
+  orderId               String         // Order ID, unique per profile/user
+  projectSource         String         // e.g. "Fiverr", "Upwork", "LinkedIn", "Referral"
+  description           String?
+  value                 Decimal        @db.Decimal(12, 2)
+  currency              String         @default("USD")
+  advancePayment        Decimal        @default(0) @db.Decimal(12, 2)
+  startDate             DateTime
+  deliveryStatementDate DateTime?
+  deadline              DateTime
+  actualDeliveryDate    DateTime?
+  estimatedDuration     String?
+  salesType             String         @default("NEW_ORDER") // NEW_ORDER, REPEAT_ORDER
+  orderStatus           String         @default("NEW") // NEW, NOT_STARTED, WIP, ON_HOLD, PENDING_CLIENT, REVISION, DELIVERED, CANCELLED
+  priority              String         @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  progressPercentage    Int            @default(0) // 0-100
+  remark                String?
+  internalNotes         String?
+  attachments           String?        // JSON string of file links
+  isArchived            Boolean        @default(false)
+  isDeleted             Boolean        @default(false)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client                Client         @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  monthlyAssignments    ProjectMonth[]
+  payments              Payment[]
+  tasks                 ProjectTask[]
+  invoices              Invoice[]
+  notes                 ProjectNote[]
+
+  @@unique([userId, orderId])
+  @@index([userId])
+  @@index([userId, orderStatus])
+  @@index([userId, isArchived, isDeleted])
+  @@index([userId, deadline])
+}
+
+model ProjectMonth {
+  id                 String    @id @default(cuid())
+  userId             String
+  projectId          String
+  month              Int       // 1 - 12
+  year               Int       // e.g. 2026
+  assignmentType     String    @default("ORIGINAL") // ORIGINAL, CARRY_FORWARD
+  fromMonth          Int?
+  fromYear           Int?
+  toMonth            Int?
+  toYear             Int?
+  carryForwardDate   DateTime?
+  carryForwardReason String?
+  previousStatus     String?
+  remark             String?
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project            Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, month, year])
+  @@index([userId, year, month])
+  @@index([userId, assignmentType])
+}
+
+model Payment {
+  id             String    @id @default(cuid())
+  userId         String
+  projectId      String
+  clientId       String
+  amount         Decimal   @db.Decimal(12, 2)
+  currency       String    @default("USD")
+  paymentDate    DateTime
+  paymentMethod  String    @default("BANK_TRANSFER") // BANK_TRANSFER, PAYONEER, WISE, PAYPAL, BKASH, NAGAD, CASH, OTHER
+  transactionRef String?
+  status         String    @default("COMPLETED") // COMPLETED, REFUNDED, CANCELLED
+  remark         String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  client         Client    @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([userId, paymentDate])
+  @@index([projectId])
+}
+
+model Expense {
+  id            String    @id @default(cuid())
+  userId        String
+  title         String
+  category      String    @default("SOFTWARE") // SOFTWARE, HOSTING, INTERNET, HARDWARE, SUBSCRIPTION, MARKETING, OTHER
+  amount        Decimal   @db.Decimal(12, 2)
+  currency      String    @default("USD")
+  expenseDate   DateTime
+  paymentMethod String    @default("OTHER")
+  remark        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, expenseDate])
+}
+
+model Target {
+  id           String    @id @default(cuid())
+  userId       String
+  targetType   String    // MONTHLY_REVENUE, YEARLY_REVENUE, MONTHLY_PROJECTS, MONTHLY_DELIVERIES, NEW_CLIENTS, DAILY_REVENUE, WEEKLY_REVENUE
+  targetAmount Decimal   @db.Decimal(12, 2)
+  currency     String    @default("USD")
+  month        Int?      // 1-12, or null for annual
+  year         Int
+  metricType   String    @default("RECEIVED_REVENUE") // BOOKED_VALUE, DELIVERED_VALUE, RECEIVED_REVENUE, COUNT
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, targetType, year, month, metricType])
+  @@index([userId, year])
+}
+
+model ProjectTask {
+  id           String        @id @default(cuid())
+  userId       String
+  projectId    String
+  parentTaskId String?
+  name         String
+  description  String?
+  startDate    DateTime?
+  dueDate      DateTime?
+  priority     String        @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  status       String        @default("TODO") // TODO, IN_PROGRESS, REVIEW, COMPLETED
+  progress     Int           @default(0) // 0-100
+  remark       String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parentTask   ProjectTask?  @relation("SubTasks", fields: [parentTaskId], references: [id], onDelete: Cascade)
+  subTasks     ProjectTask[] @relation("SubTasks")
+
+  @@index([userId])
+  @@index([projectId])
+}
+
+model Invoice {
+  id            String    @id @default(cuid())
+  userId        String
+  clientId      String
+  projectId     String?
+  invoiceNumber String
+  issueDate     DateTime
+  dueDate       DateTime
+  totalAmount   Decimal   @db.Decimal(12, 2)
+  currency      String    @default("USD")
+  paymentStatus String    @default("UNPAID") // UNPAID, PARTIALLY_PAID, PAID, CANCELLED
+  notes         String?
+  items         String?   // JSON representation of line items
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client        Client    @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  project       Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, invoiceNumber])
+  @@index([userId])
+  @@index([clientId])
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  userId      String
+  actionType  String   // PROJECT_CREATED, STATUS_CHANGED, PAYMENT_ADDED, CARRIED_FORWARD, etc.
+  entityType  String   // PROJECT, CLIENT, PAYMENT, EXPENSE, INVOICE, TARGET, TASK
+  entityId    String
+  description String
+  oldValues   String?  // JSON
+  newValues   String?  // JSON
+  timestamp   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, timestamp])
+  @@index([entityType, entityId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String   @default("INFO") // INFO, WARNING, DEADLINE, PAYMENT, OVERDUE
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+}
+
+model ProjectNote {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String
+  title     String?
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([projectId])
+}
