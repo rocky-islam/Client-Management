@@ -295,8 +295,8 @@ export function MonthlyGoalBanner({
                   <span className="absolute left-3 top-2 text-xs font-bold text-muted-foreground">$</span>
                   <Input
                     type="number"
-                    min="1"
-                    step="100"
+                    min="0"
+                    step="any"
                     required
                     value={targetInput}
                     onChange={(e) => setTargetInput(e.target.value)}
@@ -354,3 +354,4 @@ export function MonthlyGoalBanner({
     </>
   );
 }
+
