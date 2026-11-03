@@ -197,17 +197,19 @@ export function ProjectForm({ initialData, isEditing = false }: ProjectFormProps
         const profileJson = await resProfiles.json();
         const apiProfiles = profileJson.profiles?.map((p: any) => p.name).filter(Boolean) || [];
         if (apiProfiles.length > 0) {
-          setProfiles((prev) => Array.from(new Set([...prev, ...apiProfiles])));
+          const combined = initialData?.profileName
+            ? Array.from(new Set([initialData.profileName, ...apiProfiles]))
+            : apiProfiles;
+          setProfiles(combined);
+          if (!watch('profileName') && combined.length > 0) {
+            setValue('profileName', combined[0]);
+          }
         }
       }
 
       if (resProjects.ok) {
         const prjJson = await resProjects.json();
         const prjs: any[] = prjJson.projects || [];
-        const usedProfiles = Array.from(new Set(prjs.map((p) => p.profileName).filter(Boolean)));
-        if (usedProfiles.length > 0) {
-          setProfiles((prev) => Array.from(new Set([...prev, ...usedProfiles])));
-        }
         const usedSources = Array.from(new Set(prjs.map((p) => p.projectSource).filter(Boolean)));
         if (usedSources.length > 0) {
           setSources((prev) => Array.from(new Set([...prev, ...usedSources])));

@@ -12,9 +12,9 @@ import {
   DollarSign,
   Briefcase,
   Loader2,
-  MoreHorizontal,
-  Edit,
+  Edit2,
   Trash2,
+  Globe,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -46,6 +46,7 @@ export default function ClientsPage() {
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [editingClient, setEditingClient] = useState<any>(null);
 
   // Form State
   const [name, setName] = useState('');
@@ -54,6 +55,7 @@ export default function ClientsPage() {
   const [country, setCountry] = useState('');
   const [contactInfo, setContactInfo] = useState('');
   const [profileLink, setProfileLink] = useState('');
+  const [clientStatus, setClientStatus] = useState('ACTIVE');
   const [notes, setNotes] = useState('');
 
   const fetchClients = async () => {
@@ -75,7 +77,33 @@ export default function ClientsPage() {
     fetchClients();
   }, [search]);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleOpenAdd = () => {
+    setEditingClient(null);
+    setName('');
+    setCompanyName('');
+    setEmail('');
+    setCountry('');
+    setContactInfo('');
+    setProfileLink('');
+    setClientStatus('ACTIVE');
+    setNotes('');
+    setModalOpen(true);
+  };
+
+  const handleOpenEdit = (c: any) => {
+    setEditingClient(c);
+    setName(c.name || '');
+    setCompanyName(c.companyName || '');
+    setEmail(c.email || '');
+    setCountry(c.country || '');
+    setContactInfo(c.contactInfo || '');
+    setProfileLink(c.profileLink || '');
+    setClientStatus(c.clientStatus || 'ACTIVE');
+    setNotes(c.notes || '');
+    setModalOpen(true);
+  };
+
+  const handleSaveClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
       toast.error('Client name is required');
@@ -84,8 +112,11 @@ export default function ClientsPage() {
 
     setSubmitting(true);
     try {
-      const res = await fetch('/api/clients', {
-        method: 'POST',
+      const url = editingClient ? `/api/clients/${editingClient.id}` : '/api/clients';
+      const method = editingClient ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
@@ -94,28 +125,40 @@ export default function ClientsPage() {
           country: country.trim() || undefined,
           contactInfo: contactInfo.trim() || undefined,
           profileLink: profileLink.trim() || undefined,
+          clientStatus: clientStatus || 'ACTIVE',
           notes: notes.trim() || undefined,
-          clientStatus: 'ACTIVE',
         }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to create client');
+      if (!res.ok) throw new Error(data.error || 'Failed to save client');
 
-      toast.success(`Client "${data.client.name}" created successfully`);
+      toast.success(
+        editingClient
+          ? `Client "${data.client?.name || name}" updated successfully!`
+          : `Client "${data.client?.name || name}" created successfully!`
+      );
       setModalOpen(false);
-      setName('');
-      setCompanyName('');
-      setEmail('');
-      setCountry('');
-      setContactInfo('');
-      setProfileLink('');
-      setNotes('');
       fetchClients();
     } catch (e: any) {
       toast.error(e.message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDeleteClient = async (id: string, clientName: string) => {
+    if (!confirm(`Are you sure you want to delete client "${clientName}"?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/clients/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete client');
+      toast.success(`Client "${clientName}" deleted successfully`);
+      fetchClients();
+    } catch (e: any) {
+      toast.error(e.message);
     }
   };
 
@@ -140,15 +183,18 @@ export default function ClientsPage() {
 
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="h-9 text-xs gap-1.5 shadow-sm">
+            <Button size="sm" onClick={handleOpenAdd} className="h-9 text-xs gap-1.5 shadow-sm">
               <UserPlus className="h-4 w-4" />
               <span>Add Client</span>
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-md">
-            <form onSubmit={handleCreate}>
+            <form onSubmit={handleSaveClient}>
               <DialogHeader>
-                <DialogTitle className="text-base">Add New Client</DialogTitle>
+                <DialogTitle className="text-base flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary" />
+                  <span>{editingClient ? 'Edit Client Details' : 'Add New Client'}</span>
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-3 py-3 text-xs">
                 <div className="space-y-1">
@@ -165,7 +211,7 @@ export default function ClientsPage() {
                   <div className="space-y-1">
                     <Label className="text-xs font-semibold">Company Name</Label>
                     <Input
-                      placeholder="e.g. Apex Tech"
+                      placeholder="e.g. Apex Tech Solutions"
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
                     />
@@ -180,14 +226,28 @@ export default function ClientsPage() {
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Email Address</Label>
-                  <Input
-                    type="email"
-                    placeholder="alex@apextech.io"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Email Address</Label>
+                    <Input
+                      type="email"
+                      placeholder="alex@apextech.io"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Client Status</Label>
+                    <select
+                      value={clientStatus}
+                      onChange={(e) => setClientStatus(e.target.value)}
+                      className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    >
+                      <option value="ACTIVE">Active</option>
+                      <option value="INACTIVE">Inactive</option>
+                      <option value="LEAD">Lead</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -228,7 +288,7 @@ export default function ClientsPage() {
                   Cancel
                 </Button>
                 <Button size="sm" type="submit" disabled={submitting}>
-                  {submitting ? 'Creating...' : 'Save Client'}
+                  {submitting ? 'Saving...' : editingClient ? 'Update Client' : 'Save Client'}
                 </Button>
               </DialogFooter>
             </form>
@@ -314,7 +374,7 @@ export default function ClientsPage() {
                 <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[110px] text-right">Received</TableHead>
                 <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[110px] text-right">Outstanding</TableHead>
                 <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[100px] text-center">Status</TableHead>
-                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[80px] text-right pr-4">Actions</TableHead>
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[100px] text-right pr-4">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -373,11 +433,31 @@ export default function ClientsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right py-3 pr-4 whitespace-nowrap">
-                      <Link href={`/clients/${c.id}`}>
-                        <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs">
-                          View
+                      <div className="flex items-center justify-end gap-1">
+                        <Link href={`/clients/${c.id}`}>
+                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                            View
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenEdit(c)}
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          title="Edit Client"
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
                         </Button>
-                      </Link>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteClient(c.id, c.name)}
+                          className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                          title="Delete Client"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -389,4 +469,3 @@ export default function ClientsPage() {
     </div>
   );
 }
-

@@ -16,26 +16,35 @@ export async function GET(request: Request) {
       orderBy: { createdAt: 'asc' },
     });
 
-    // 2. If user has no profiles yet, initialize with default profiles
+    // 2. If user has no profiles yet, only seed if user has never deleted or managed profiles before
     if (profiles.length === 0) {
-      await prisma.profile.createMany({
-        data: DEFAULT_PROFILES.map((name) => ({
+      const hasProfileHistory = await prisma.activityLog.findFirst({
+        where: {
           userId: user.id,
-          name,
-          platform: name,
-          isDefault: true,
-          color: name === 'Fiverr' ? '#10B981' : name === 'Upwork' ? '#14A800' : '#4F46E5',
-        })),
-        skipDuplicates: true,
+          entityType: 'PROFILE',
+        },
       });
 
-      profiles = await prisma.profile.findMany({
-        where: { userId: user.id },
-        orderBy: { createdAt: 'asc' },
-      });
+      if (!hasProfileHistory) {
+        await prisma.profile.createMany({
+          data: DEFAULT_PROFILES.map((name) => ({
+            userId: user.id,
+            name,
+            platform: name,
+            isDefault: false,
+            color: name === 'Fiverr' ? '#10B981' : name === 'Upwork' ? '#14A800' : '#4F46E5',
+          })),
+          skipDuplicates: true,
+        });
+
+        profiles = await prisma.profile.findMany({
+          where: { userId: user.id },
+          orderBy: { createdAt: 'asc' },
+        });
+      }
     }
 
-    // 3. Also check if there are any custom profiles used in projects that aren't in the Profile table yet
+    // 3. Fetch user projects to calculate profile aggregates
     const userProjects = await prisma.project.findMany({
       where: { userId: user.id, isDeleted: false },
       select: {
@@ -50,27 +59,6 @@ export async function GET(request: Request) {
         },
       },
     });
-
-    const existingNames = new Set(profiles.map((p) => p.name));
-    const projectProfiles = Array.from(new Set(userProjects.map((p) => p.profileName).filter(Boolean)));
-    const missingProfiles = projectProfiles.filter((name) => !existingNames.has(name));
-
-    if (missingProfiles.length > 0) {
-      await prisma.profile.createMany({
-        data: missingProfiles.map((name) => ({
-          userId: user.id,
-          name,
-          platform: 'Other',
-          isDefault: false,
-        })),
-        skipDuplicates: true,
-      });
-
-      profiles = await prisma.profile.findMany({
-        where: { userId: user.id },
-        orderBy: { createdAt: 'asc' },
-      });
-    }
 
     // 4. Calculate stats per profile
     const profilesWithStats = profiles.map((p) => {
@@ -130,7 +118,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Profile name is required' }, { status: 400 });
     }
 
-    // Check if profile with same name already exists
+    // Check duplicate
     const existing = await prisma.profile.findFirst({
       where: {
         userId: user.id,
@@ -140,7 +128,7 @@ export async function POST(request: Request) {
 
     if (existing) {
       return NextResponse.json(
-        { error: `Profile "${name}" already exists.` },
+        { error: `Profile "${name}" already exists` },
         { status: 400 }
       );
     }
@@ -152,24 +140,22 @@ export async function POST(request: Request) {
         platform: body.platform?.trim() || 'Freelance',
         description: body.description?.trim() || null,
         profileLink: body.profileLink?.trim() || null,
-        color: body.color?.trim() || '#4F46E5',
+        color: body.color || '#4F46E5',
         isDefault: false,
       },
     });
 
     await logActivity({
       userId: user.id,
-      actionType: 'SETTINGS_UPDATED',
-      entityType: 'SETTINGS',
+      actionType: 'PROFILE_CREATED',
+      entityType: 'PROFILE',
       entityId: profile.id,
       description: `Created new freelance profile "${profile.name}" (${profile.platform})`,
-      newValues: profile,
     });
 
-    return NextResponse.json({ success: true, profile }, { status: 201 });
+    return NextResponse.json({ success: true, profile });
   } catch (error: any) {
-    console.error('Profile POST error:', error);
+    console.error('Profiles POST error:', error);
     return NextResponse.json({ error: error.message || 'Failed to create profile' }, { status: 500 });
   }
 }
-

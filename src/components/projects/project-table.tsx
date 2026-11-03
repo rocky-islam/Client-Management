@@ -160,6 +160,15 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
     return { urgentCount: urgent, overdueCount: overdue, wipCount: wip, deliveredCount: delivered };
   }, [data]);
 
+  // Dynamically extract profiles from actual project data
+  const availableProfiles = useMemo(() => {
+    const set = new Set<string>();
+    data.forEach((p) => {
+      if (p.profileName) set.add(p.profileName);
+    });
+    return Array.from(set).sort();
+  }, [data]);
+
   // Fast inline status updater
   const handleStatusChange = async (projectId: string, newStatus: string) => {
     setUpdatingStatusId(projectId);
@@ -988,14 +997,14 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
             ))}
           </select>
 
-          {/* Profile Filter */}
+          {/* Dynamic Profile Filter */}
           <select
             value={profileFilter}
             onChange={(e) => setProfileFilter(e.target.value)}
             className="h-9 rounded-md border border-input bg-background px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           >
             <option value="ALL">All Profiles</option>
-            {DEFAULT_PROFILES.map((p) => (
+            {availableProfiles.map((p) => (
               <option key={p} value={p}>
                 {p}
               </option>

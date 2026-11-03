@@ -9,6 +9,7 @@ import { PROJECT_STATUSES } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ClientActions } from '@/components/clients/client-actions';
 import {
   ChevronLeft,
   Users,
@@ -85,12 +86,15 @@ export default async function ClientDetailPage({
           </div>
         </div>
 
-        <Link href="/projects/new">
-          <Button size="sm" className="h-8 text-xs gap-1.5 shadow-sm">
-            <Plus className="h-3.5 w-3.5" />
-            <span>New Project for Client</span>
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <ClientActions client={client} />
+          <Link href={`/projects/new?clientId=${client.id}`}>
+            <Button size="sm" className="h-8 text-xs gap-1.5 shadow-sm">
+              <Plus className="h-3.5 w-3.5" />
+              <span>New Project</span>
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* KPI Cards */}

@@ -437,17 +437,15 @@ export default function ProfilesPage() {
                         >
                           <Edit2 className="h-3.5 w-3.5" />
                         </Button>
-                        {!p.isDefault && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteProfile(p.id, p.name)}
-                            className="h-7 w-7 text-destructive hover:bg-destructive/10"
-                            title="Delete Profile"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteProfile(p.id, p.name)}
+                          className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                          title="Delete Profile"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
