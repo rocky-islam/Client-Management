@@ -26,3 +26,4 @@ export function formatDate(date: Date | string | null | undefined, formatStr = "
     return "-";
   }
 }
+

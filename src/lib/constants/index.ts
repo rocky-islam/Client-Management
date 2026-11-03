@@ -99,3 +99,4 @@ export const PROJECT_CATEGORIES = [
   'Consultation',
   'Other',
 ];
+

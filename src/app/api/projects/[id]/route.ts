@@ -179,3 +179,4 @@ export async function DELETE(
     return NextResponse.json({ error: error.message || 'Failed to delete project' }, { status: 500 });
   }
 }
+

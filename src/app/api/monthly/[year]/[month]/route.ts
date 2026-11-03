@@ -17,60 +17,56 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid year or month' }, { status: 400 });
     }
 
-    // Fetch assignments for this specific month
-    const assignments = await prisma.projectMonth.findMany({
-      where: {
-        userId: user.id,
-        year,
-        month,
-        isActive: true,
-      },
-      include: {
-        project: {
-          include: {
-            client: true,
-            payments: {
-              where: { status: 'COMPLETED' },
-            },
-            monthlyAssignments: {
-              where: { isActive: true },
-              orderBy: [{ year: 'asc' }, { month: 'asc' }],
-            },
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    const activeAssignments = assignments.filter((a) => !a.project.isDeleted);
-
-    // Calculate actual revenue received this month
     const startOfMonth = new Date(year, month - 1, 1);
     const endOfMonth = new Date(year, month, 0, 23, 59, 59);
 
-    const payments = await prisma.payment.findMany({
-      where: {
-        userId: user.id,
-        status: 'COMPLETED',
-        paymentDate: {
-          gte: startOfMonth,
-          lte: endOfMonth,
+    // Parallelize queries in a single round-trip
+    const [assignments, payments, target] = await Promise.all([
+      prisma.projectMonth.findMany({
+        where: {
+          userId: user.id,
+          year,
+          month,
+          isActive: true,
         },
-      },
-    });
+        include: {
+          project: {
+            include: {
+              client: true,
+              payments: {
+                where: { status: 'COMPLETED' },
+              },
+              monthlyAssignments: {
+                where: { isActive: true },
+                orderBy: [{ year: 'asc' }, { month: 'asc' }],
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.payment.findMany({
+        where: {
+          userId: user.id,
+          status: 'COMPLETED',
+          paymentDate: {
+            gte: startOfMonth,
+            lte: endOfMonth,
+          },
+        },
+      }),
+      prisma.target.findFirst({
+        where: {
+          userId: user.id,
+          year,
+          month,
+          targetType: 'MONTHLY_REVENUE',
+        },
+      }),
+    ]);
 
+    const activeAssignments = assignments.filter((a) => !a.project.isDeleted);
     const actualMonthlyRevenue = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-
-    // Fetch target for this month
-    const target = await prisma.target.findFirst({
-      where: {
-        userId: user.id,
-        year,
-        month,
-        targetType: 'MONTHLY_REVENUE',
-      },
-    });
-
     const targetAmount = target ? Number(target.targetAmount) : 0;
     const targetAchievement = calculateAchievement(actualMonthlyRevenue, targetAmount);
 
@@ -165,3 +161,4 @@ export async function GET(
     return NextResponse.json({ error: error.message || 'Failed to fetch monthly details' }, { status: 500 });
   }
 }
+

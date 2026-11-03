@@ -302,17 +302,17 @@ export default function RevenuePaymentsPage() {
             Chronological record of all client payments and cleared balances
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
-          <Table>
+        <CardContent className="p-0 overflow-hidden">
+          <Table className="w-full min-w-[880px] text-xs">
             <TableHeader>
-              <TableRow>
-                <TableHead className="text-xs">Date</TableHead>
-                <TableHead className="text-xs">Project & Client</TableHead>
-                <TableHead className="text-xs">Amount</TableHead>
-                <TableHead className="text-xs">Method</TableHead>
-                <TableHead className="text-xs">Reference</TableHead>
-                <TableHead className="text-xs">Status</TableHead>
-                <TableHead className="text-xs">Remark</TableHead>
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[110px]">Date</TableHead>
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[180px]">Project & Client</TableHead>
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[120px] text-right">Amount</TableHead>
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[110px] text-center">Method</TableHead>
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[120px]">Reference</TableHead>
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[100px] text-center">Status</TableHead>
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[160px]">Remark</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -331,34 +331,34 @@ export default function RevenuePaymentsPage() {
               ) : (
                 payments.map((p) => (
                   <TableRow key={p.id} className="hover:bg-muted/40 transition-colors text-xs">
-                    <TableCell className="font-medium whitespace-nowrap">
+                    <TableCell className="font-medium whitespace-nowrap py-3">
                       {formatDate(p.paymentDate)}
                     </TableCell>
-                    <TableCell>
-                      <div className="font-semibold text-foreground">
+                    <TableCell className="py-3">
+                      <div className="font-semibold text-foreground whitespace-nowrap">
                         {p.project?.name || 'Project'}
                       </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {p.client?.name} • {p.project?.orderId}
+                      <div className="text-[11px] text-muted-foreground whitespace-nowrap">
+                        {p.client?.name} • <span className="font-mono">{p.project?.orderId}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                    <TableCell className="font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap text-right py-3">
                       +{formatCurrency(p.amount, p.currency)}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center py-3 whitespace-nowrap">
                       <Badge variant="secondary" className="text-[10px]">
                         {p.paymentMethod}
                       </Badge>
                     </TableCell>
-                    <TableCell className="font-mono text-[11px] text-muted-foreground">
+                    <TableCell className="font-mono text-[11px] text-muted-foreground whitespace-nowrap py-3">
                       {p.transactionRef || '-'}
                     </TableCell>
-                    <TableCell>
-                      <Badge variant="success" className="text-[10px]">
+                    <TableCell className="text-center py-3 whitespace-nowrap">
+                      <Badge variant="outline" className="text-[10px]">
                         {p.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground italic max-w-xs truncate">
+                    <TableCell className="text-muted-foreground italic max-w-xs truncate py-3">
                       {p.remark || '-'}
                     </TableCell>
                   </TableRow>
@@ -371,3 +371,4 @@ export default function RevenuePaymentsPage() {
     </div>
   );
 }
+

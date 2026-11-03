@@ -66,3 +66,4 @@ export async function PUT(
     return NextResponse.json({ error: error.message || 'Failed to update invoice' }, { status: 500 });
   }
 }
+

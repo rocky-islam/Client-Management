@@ -295,18 +295,18 @@ export default function InvoicesPage() {
       </div>
 
       {/* Invoices Table */}
-      <Card className="shadow-sm">
-        <CardContent className="p-0">
-          <Table>
+      <Card className="shadow-sm overflow-hidden">
+        <CardContent className="p-0 overflow-hidden">
+          <Table className="w-full min-w-[860px] text-xs">
             <TableHeader>
-              <TableRow>
-                <TableHead className="text-xs">Invoice #</TableHead>
-                <TableHead className="text-xs">Client</TableHead>
-                <TableHead className="text-xs">Issue Date</TableHead>
-                <TableHead className="text-xs">Due Date</TableHead>
-                <TableHead className="text-xs">Total Amount</TableHead>
-                <TableHead className="text-xs">Payment Status</TableHead>
-                <TableHead className="text-xs text-right">Actions</TableHead>
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[130px]">Invoice #</TableHead>
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[180px]">Client</TableHead>
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[110px]">Issue Date</TableHead>
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[110px]">Due Date</TableHead>
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[120px] text-right">Total Amount</TableHead>
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[110px] text-center">Payment Status</TableHead>
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[90px] text-right pr-4">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -325,25 +325,25 @@ export default function InvoicesPage() {
               ) : (
                 invoices.map((inv) => (
                   <TableRow key={inv.id} className="hover:bg-muted/40 transition-colors text-xs">
-                    <TableCell className="font-mono font-semibold text-primary">
+                    <TableCell className="font-mono font-semibold text-primary whitespace-nowrap py-3">
                       {inv.invoiceNumber}
                     </TableCell>
-                    <TableCell>
-                      <div className="font-semibold text-foreground">{inv.client?.name}</div>
-                      <span className="text-[11px] text-muted-foreground">
+                    <TableCell className="py-3">
+                      <div className="font-semibold text-foreground whitespace-nowrap">{inv.client?.name}</div>
+                      <span className="text-[11px] text-muted-foreground whitespace-nowrap">
                         {inv.client?.companyName || '-'}
                       </span>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-muted-foreground whitespace-nowrap py-3">
                       {formatDate(inv.issueDate)}
                     </TableCell>
-                    <TableCell className="font-medium text-foreground">
+                    <TableCell className="font-medium text-foreground whitespace-nowrap py-3">
                       {formatDate(inv.dueDate)}
                     </TableCell>
-                    <TableCell className="font-bold text-foreground">
+                    <TableCell className="font-bold text-foreground text-right whitespace-nowrap py-3">
                       {formatCurrency(inv.totalAmount, inv.currency)}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center py-3 whitespace-nowrap">
                       <Badge
                         variant={inv.paymentStatus === 'PAID' ? 'success' : 'outline'}
                         className="text-[10px]"
@@ -351,7 +351,7 @@ export default function InvoicesPage() {
                         {inv.paymentStatus}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right py-3 pr-4 whitespace-nowrap">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -373,3 +373,4 @@ export default function InvoicesPage() {
     </div>
   );
 }
+

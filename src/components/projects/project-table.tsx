@@ -54,7 +54,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { calculateTimeLeft, calculateOutstandingAmount } from '@/lib/calculations';
 import { PROJECT_STATUSES, SALES_TYPES, DEFAULT_PROFILES, DEFAULT_SOURCES } from '@/lib/constants';
 import { toast } from 'sonner';
@@ -235,24 +235,31 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
     toast.success('Exported projects to CSV');
   };
 
-  // Define columns in the EXACT required order
+  // Define columns in the EXACT required order with strict responsive sizing
   const columns = useMemo<ColumnDef<ProjectTableItem>[]>(
     () => [
       {
         id: 'select',
+        meta: {
+          className: 'w-[44px] min-w-[44px] max-w-[44px] text-center px-2',
+        },
         header: ({ table }) => (
-          <Checkbox
-            checked={table.getIsAllPageRowsSelected()}
-            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-            aria-label="Select all"
-          />
+          <div className="flex justify-center">
+            <Checkbox
+              checked={table.getIsAllPageRowsSelected()}
+              onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+              aria-label="Select all"
+            />
+          </div>
         ),
         cell: ({ row }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
-          />
+          <div className="flex justify-center">
+            <Checkbox
+              checked={row.getIsSelected()}
+              onCheckedChange={(value) => row.toggleSelected(!!value)}
+              aria-label="Select row"
+            />
+          </div>
         ),
         enableSorting: false,
         enableHiding: false,
@@ -261,6 +268,9 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
       {
         id: 'projectDate',
         accessorKey: 'projectDate',
+        meta: {
+          className: 'w-[115px] min-w-[110px] whitespace-nowrap',
+        },
         header: ({ column }) => (
           <Button
             variant="ghost"
@@ -273,7 +283,7 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
           </Button>
         ),
         cell: ({ row }) => (
-          <span className="font-medium text-xs whitespace-nowrap">
+          <span className="font-medium text-xs whitespace-nowrap text-foreground">
             {formatDate(row.getValue('projectDate'))}
           </span>
         ),
@@ -282,15 +292,22 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
       {
         id: 'clientName',
         accessorFn: (row) => row.client?.name,
+        meta: {
+          className: 'w-[185px] min-w-[170px]',
+        },
         header: 'Client Name',
         cell: ({ row }) => (
           <Link
             href={`/clients/${row.original.clientId}`}
-            className="font-medium text-xs text-primary hover:underline flex flex-col"
+            className="font-medium text-xs text-primary hover:underline flex flex-col group whitespace-nowrap"
           >
-            <span>{row.original.client?.name || 'Unknown'}</span>
+            <span className="font-semibold text-foreground group-hover:text-primary transition-colors">
+              {row.original.client?.name || 'Unknown'}
+            </span>
             {row.original.client?.companyName && (
-              <span className="text-[10px] text-muted-foreground">{row.original.client.companyName}</span>
+              <span className="text-[11px] text-muted-foreground truncate max-w-[175px]">
+                {row.original.client.companyName}
+              </span>
             )}
           </Link>
         ),
@@ -299,22 +316,28 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
       {
         id: 'profileName',
         accessorKey: 'profileName',
+        meta: {
+          className: 'w-[125px] min-w-[115px] whitespace-nowrap',
+        },
         header: 'Profile Name',
         cell: ({ row }) => (
-          <Badge variant="secondary" className="text-[11px] font-normal py-0">
+          <Badge variant="secondary" className="text-[11px] font-normal py-0.5 px-2.5 whitespace-nowrap">
             {row.getValue('profileName')}
           </Badge>
         ),
       },
-      // 4. Order ID
+      // 4. Order ID (strictly whitespace-nowrap, never hyphen-wraps)
       {
         id: 'orderId',
         accessorKey: 'orderId',
+        meta: {
+          className: 'w-[145px] min-w-[135px] whitespace-nowrap',
+        },
         header: 'Order ID',
         cell: ({ row }) => (
           <Link
             href={`/projects/${row.original.id}`}
-            className="font-mono text-xs font-semibold hover:text-primary transition-colors"
+            className="font-mono text-xs font-semibold text-foreground hover:text-primary transition-colors whitespace-nowrap px-2 py-0.5 rounded bg-muted/60 border border-border/60 inline-block tracking-tight"
           >
             {row.getValue('orderId')}
           </Link>
@@ -324,39 +347,51 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
       {
         id: 'value',
         accessorKey: 'value',
+        meta: {
+          className: 'w-[120px] min-w-[110px] whitespace-nowrap text-right',
+        },
         header: ({ column }) => (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="-ml-3 h-8 text-xs font-semibold"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          >
-            Value
-            <ArrowUpDown className="ml-1.5 h-3 w-3" />
-          </Button>
+          <div className="flex justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="-mr-3 h-8 text-xs font-semibold"
+              onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            >
+              Value
+              <ArrowUpDown className="ml-1.5 h-3 w-3" />
+            </Button>
+          </div>
         ),
         cell: ({ row }) => (
-          <span className="font-semibold text-xs whitespace-nowrap">
-            {formatCurrency(row.original.value, row.original.currency)}
-          </span>
+          <div className="text-right">
+            <span className="font-bold text-xs whitespace-nowrap text-foreground">
+              {formatCurrency(row.original.value, row.original.currency)}
+            </span>
+          </div>
         ),
       },
       // 6. Order Status
       {
         id: 'orderStatus',
         accessorKey: 'orderStatus',
-        header: 'Order Status',
+        meta: {
+          className: 'w-[130px] min-w-[120px] whitespace-nowrap text-center',
+        },
+        header: () => <div className="text-center">Order Status</div>,
         cell: ({ row }) => {
           const status = row.getValue('orderStatus') as string;
           const config = PROJECT_STATUSES.find((s) => s.value === status);
           return (
-            <span
-              className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${
-                config?.color || 'bg-slate-100 text-slate-800'
-              }`}
-            >
-              {config?.label || status}
-            </span>
+            <div className="flex justify-center">
+              <span
+                className={`inline-flex items-center justify-center rounded-md px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${
+                  config?.color || 'bg-slate-100 text-slate-800'
+                }`}
+              >
+                {config?.label || status}
+              </span>
+            </div>
           );
         },
       },
@@ -364,23 +399,31 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
       {
         id: 'deliveryStatementDate',
         accessorKey: 'deliveryStatementDate',
-        header: 'Delivery Statement Date',
+        meta: {
+          className: 'w-[145px] min-w-[135px] whitespace-nowrap text-center',
+        },
+        header: () => <div className="text-center">Delivery Statement Date</div>,
         cell: ({ row }) => (
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
-            {formatDate(row.getValue('deliveryStatementDate'))}
-          </span>
+          <div className="text-center">
+            <span className="text-xs text-muted-foreground whitespace-nowrap font-medium">
+              {formatDate(row.getValue('deliveryStatementDate'))}
+            </span>
+          </div>
         ),
       },
       // 8. Remark
       {
         id: 'remark',
         accessorKey: 'remark',
+        meta: {
+          className: 'min-w-[190px] max-w-[280px]',
+        },
         header: 'Remark',
         cell: ({ row }) => {
           const remark = row.getValue('remark') as string;
           return (
             <span
-              className="text-xs text-muted-foreground max-w-[180px] truncate block"
+              className="text-xs text-muted-foreground max-w-[260px] truncate block font-normal"
               title={remark || ''}
             >
               {remark || '-'}
@@ -392,27 +435,37 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
       {
         id: 'deadline',
         accessorKey: 'deadline',
+        meta: {
+          className: 'w-[135px] min-w-[125px] whitespace-nowrap text-center',
+        },
         header: ({ column }) => (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="-ml-3 h-8 text-xs font-semibold"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          >
-            Project Deadline
-            <ArrowUpDown className="ml-1.5 h-3 w-3" />
-          </Button>
+          <div className="flex justify-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs font-semibold"
+              onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            >
+              Project Deadline
+              <ArrowUpDown className="ml-1.5 h-3 w-3" />
+            </Button>
+          </div>
         ),
         cell: ({ row }) => (
-          <span className="text-xs whitespace-nowrap">
-            {formatDate(row.getValue('deadline'))}
-          </span>
+          <div className="text-center">
+            <span className="text-xs font-medium whitespace-nowrap text-foreground">
+              {formatDate(row.getValue('deadline'))}
+            </span>
+          </div>
         ),
       },
       // 10. Time Left (Dynamically calculated, never stored)
       {
         id: 'timeLeft',
-        header: 'Time Left',
+        meta: {
+          className: 'w-[130px] min-w-[120px] whitespace-nowrap text-center',
+        },
+        header: () => <div className="text-center">Time Left</div>,
         cell: ({ row }) => {
           const res = calculateTimeLeft(
             row.original.deadline,
@@ -420,11 +473,13 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
             (row.original as any).actualDeliveryDate
           );
           return (
-            <span
-              className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${res.badgeColor}`}
-            >
-              {res.text}
-            </span>
+            <div className="flex justify-center">
+              <span
+                className={`inline-flex items-center justify-center rounded-md px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap shadow-xs ${res.badgeColor}`}
+              >
+                {res.text}
+              </span>
+            </div>
           );
         },
       },
@@ -432,28 +487,36 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
       {
         id: 'salesType',
         accessorKey: 'salesType',
-        header: 'Sales Type',
+        meta: {
+          className: 'w-[105px] min-w-[95px] whitespace-nowrap text-center',
+        },
+        header: () => <div className="text-center">Sales Type</div>,
         cell: ({ row }) => {
           const type = row.getValue('salesType') as string;
           const isRepeat = type === 'REPEAT_ORDER';
           return (
-            <Badge
-              variant="outline"
-              className={`text-[10px] font-medium ${
-                isRepeat
-                  ? 'border-indigo-300 text-indigo-700 bg-indigo-50/50 dark:bg-indigo-950/20 dark:text-indigo-300'
-                  : 'border-slate-300 text-slate-700 bg-slate-50 dark:bg-slate-900/40 dark:text-slate-300'
-              }`}
-            >
-              {isRepeat ? 'Repeat' : 'New'}
-            </Badge>
+            <div className="flex justify-center">
+              <Badge
+                variant="outline"
+                className={`text-[10px] font-semibold whitespace-nowrap px-2 py-0.5 ${
+                  isRepeat
+                    ? 'border-indigo-300 text-indigo-700 bg-indigo-50/70 dark:bg-indigo-950/30 dark:text-indigo-300'
+                    : 'border-slate-300 text-slate-700 bg-slate-50 dark:bg-slate-900/50 dark:text-slate-300'
+                }`}
+              >
+                {isRepeat ? 'Repeat' : 'New'}
+              </Badge>
+            </div>
           );
         },
       },
       // 12. Actions
       {
         id: 'actions',
-        header: () => <div className="text-right">Actions</div>,
+        meta: {
+          className: 'w-[70px] min-w-[65px] text-right pr-4',
+        },
+        header: () => <div className="text-right pr-2">Actions</div>,
         cell: ({ row }) => {
           const prj = row.original;
           return (
@@ -517,30 +580,35 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
       {
         id: 'id',
         accessorKey: 'id',
+        meta: { className: 'w-[140px] whitespace-nowrap font-mono' },
         header: 'Project ID',
         cell: ({ row }) => <span className="font-mono text-xs">{row.getValue('id')}</span>,
       },
       {
         id: 'name',
         accessorKey: 'name',
+        meta: { className: 'w-[180px] min-w-[160px]' },
         header: 'Project Name',
         cell: ({ row }) => <span className="text-xs font-medium">{row.getValue('name')}</span>,
       },
       {
         id: 'category',
         accessorKey: 'category',
+        meta: { className: 'w-[130px] whitespace-nowrap' },
         header: 'Category',
         cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.getValue('category')}</span>,
       },
       {
         id: 'projectSource',
         accessorKey: 'projectSource',
+        meta: { className: 'w-[130px] whitespace-nowrap' },
         header: 'Source',
         cell: ({ row }) => <span className="text-xs">{row.getValue('projectSource')}</span>,
       },
       {
         id: 'progressPercentage',
         accessorKey: 'progressPercentage',
+        meta: { className: 'w-[95px] text-center' },
         header: 'Progress',
         cell: ({ row }) => {
           const val = Number(row.getValue('progressPercentage') || 0);
@@ -549,6 +617,7 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
       },
       {
         id: 'paymentStatus',
+        meta: { className: 'w-[120px] text-center whitespace-nowrap' },
         header: 'Payment Status',
         cell: ({ row }) => {
           const { paymentStatus } = calculateOutstandingAmount(
@@ -694,14 +763,20 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
         </div>
       </div>
 
-      {/* TanStack Table Container */}
-      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-        <Table>
+      {/* TanStack Table Container with clean horizontal scrolling and minimum width */}
+      <div className="w-full overflow-hidden rounded-xl border bg-card shadow-sm">
+        <Table className="w-full min-w-[1380px] text-xs">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="bg-muted/40 hover:bg-muted/40">
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead
+                    key={header.id}
+                    className={cn(
+                      'h-11 px-3 text-xs font-semibold text-muted-foreground whitespace-nowrap',
+                      (header.column.columnDef as any).meta?.className
+                    )}
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(header.column.columnDef.header, header.getContext())}
@@ -719,7 +794,13 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
                   className="hover:bg-muted/40 transition-colors"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell
+                      key={cell.id}
+                      className={cn(
+                        'px-3 py-3 align-middle',
+                        (cell.column.columnDef as any).meta?.className
+                      )}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
@@ -727,7 +808,7 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground text-xs">
+                <TableCell colSpan={columns.length} className="h-36 text-center text-muted-foreground text-xs">
                   No projects found matching the filter criteria.
                 </TableCell>
               </TableRow>
@@ -772,3 +853,4 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
     </div>
   );
 }
+

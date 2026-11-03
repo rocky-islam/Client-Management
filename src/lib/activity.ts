@@ -27,3 +27,4 @@ export async function logActivity(params: LogActivityParams) {
     console.error('Failed to write activity log:', error);
   }
 }
+

@@ -1,3 +1,4 @@
+import * as React from 'react';
 import bcrypt from 'bcryptjs';
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
@@ -7,6 +8,9 @@ const COOKIE_NAME = 'rocky_session_token';
 const SECRET_KEY = new TextEncoder().encode(
   process.env.AUTH_SECRET || 'rocky-business-manager-production-secret-auth-key-2026-super-secure'
 );
+
+// Safe React cache wrapper that works both in Next.js Server Components and standalone Node/tsx scripts
+const cacheFn = typeof (React as any).cache === 'function' ? (React as any).cache : <T extends (...args: any[]) => any>(fn: T): T => fn;
 
 export async function hashPassword(password: string): Promise<string> {
   const salt = await bcrypt.genSalt(10);
@@ -53,7 +57,8 @@ export async function clearSessionCookie() {
   cookieStore.delete(COOKIE_NAME);
 }
 
-export async function getCurrentUser() {
+// React cache deduplicates getCurrentUser calls during the same server render pass
+export const getCurrentUser = cacheFn(async () => {
   const cookieStore = cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) return null;
@@ -82,7 +87,7 @@ export async function getCurrentUser() {
     console.error('Error fetching current user:', error);
     return null;
   }
-}
+});
 
 export async function requireAuth() {
   const user = await getCurrentUser();
@@ -91,3 +96,4 @@ export async function requireAuth() {
   }
   return user;
 }
+

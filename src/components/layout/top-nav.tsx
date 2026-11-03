@@ -212,3 +212,4 @@ export function TopNav({ user, setMobileOpen }: TopNavProps) {
     </header>
   );
 }
+

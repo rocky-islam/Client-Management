@@ -21,3 +21,4 @@ export async function createNotification(
     console.error('Failed to create notification:', error);
   }
 }
+

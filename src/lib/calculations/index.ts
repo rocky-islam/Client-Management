@@ -120,3 +120,4 @@ export function calculateAchievement(actual: number, target: number): number {
   if (!target || target <= 0) return 0;
   return Math.min(999, Math.round((actual / target) * 100));
 }
+

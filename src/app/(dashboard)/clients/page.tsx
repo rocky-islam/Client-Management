@@ -303,18 +303,18 @@ export default function ClientsPage() {
           />
         </div>
 
-        <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-          <Table>
+        <div className="w-full overflow-hidden rounded-xl border bg-card shadow-sm">
+          <Table className="w-full min-w-[960px] text-xs">
             <TableHeader>
-              <TableRow>
-                <TableHead className="text-xs">Client</TableHead>
-                <TableHead className="text-xs">Company / Country</TableHead>
-                <TableHead className="text-xs">Orders</TableHead>
-                <TableHead className="text-xs">Total Value</TableHead>
-                <TableHead className="text-xs">Received</TableHead>
-                <TableHead className="text-xs">Outstanding</TableHead>
-                <TableHead className="text-xs">Status</TableHead>
-                <TableHead className="text-xs text-right">Actions</TableHead>
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[180px]">Client</TableHead>
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[150px]">Company / Country</TableHead>
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[110px]">Orders</TableHead>
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[110px] text-right">Total Value</TableHead>
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[110px] text-right">Received</TableHead>
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[110px] text-right">Outstanding</TableHead>
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[100px] text-center">Status</TableHead>
+                <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[80px] text-right pr-4">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -333,48 +333,48 @@ export default function ClientsPage() {
               ) : (
                 clients.map((c) => (
                   <TableRow key={c.id} className="hover:bg-muted/40 transition-colors text-xs">
-                    <TableCell>
+                    <TableCell className="py-3">
                       <Link
                         href={`/clients/${c.id}`}
-                        className="font-semibold text-primary hover:underline block"
+                        className="font-semibold text-primary hover:underline block whitespace-nowrap"
                       >
                         {c.name}
                       </Link>
                       {c.email && (
-                        <span className="text-[11px] text-muted-foreground">{c.email}</span>
+                        <span className="text-[11px] text-muted-foreground whitespace-nowrap">{c.email}</span>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <div className="text-xs text-foreground">{c.companyName || '-'}</div>
-                      <span className="text-[10px] text-muted-foreground">{c.country || '-'}</span>
+                    <TableCell className="py-3">
+                      <div className="text-xs text-foreground font-medium whitespace-nowrap">{c.companyName || '-'}</div>
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">{c.country || '-'}</span>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="text-[11px]">
+                    <TableCell className="py-3 whitespace-nowrap">
+                      <Badge variant="secondary" className="text-[11px] py-0.5">
                         {c.totalOrders} {c.totalOrders === 1 ? 'order' : 'orders'}
                       </Badge>
                       {c.isRepeatClient && (
-                        <span className="ml-1 text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">
+                        <span className="ml-1.5 text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">
                           Repeat
                         </span>
                       )}
                     </TableCell>
-                    <TableCell className="font-semibold">
+                    <TableCell className="font-semibold text-right py-3 whitespace-nowrap">
                       {formatCurrency(c.totalValue, 'USD')}
                     </TableCell>
-                    <TableCell className="font-semibold text-emerald-600 dark:text-emerald-400">
+                    <TableCell className="font-semibold text-emerald-600 dark:text-emerald-400 text-right py-3 whitespace-nowrap">
                       {formatCurrency(c.totalReceived, 'USD')}
                     </TableCell>
-                    <TableCell className="font-semibold text-amber-600 dark:text-amber-400">
+                    <TableCell className="font-semibold text-amber-600 dark:text-amber-400 text-right py-3 whitespace-nowrap">
                       {formatCurrency(c.outstanding, 'USD')}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center py-3 whitespace-nowrap">
                       <Badge variant="outline" className="text-[10px]">
                         {c.clientStatus}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right py-3 pr-4 whitespace-nowrap">
                       <Link href={`/clients/${c.id}`}>
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                        <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs">
                           View
                         </Button>
                       </Link>
@@ -389,3 +389,4 @@ export default function ClientsPage() {
     </div>
   );
 }
+

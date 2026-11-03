@@ -296,18 +296,18 @@ export default function ExpensesPage() {
           </select>
         </div>
 
-        <Card className="shadow-sm">
-          <CardContent className="p-0">
-            <Table>
+        <Card className="shadow-sm overflow-hidden">
+          <CardContent className="p-0 overflow-hidden">
+            <Table className="w-full min-w-[860px] text-xs">
               <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">Date</TableHead>
-                  <TableHead className="text-xs">Title</TableHead>
-                  <TableHead className="text-xs">Category</TableHead>
-                  <TableHead className="text-xs">Amount</TableHead>
-                  <TableHead className="text-xs">Method</TableHead>
-                  <TableHead className="text-xs">Remark</TableHead>
-                  <TableHead className="text-xs text-right">Actions</TableHead>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
+                  <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[110px]">Date</TableHead>
+                  <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[180px]">Title</TableHead>
+                  <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[120px] text-center">Category</TableHead>
+                  <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[120px] text-right">Amount</TableHead>
+                  <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[110px] text-center">Method</TableHead>
+                  <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[160px]">Remark</TableHead>
+                  <TableHead className="text-xs font-semibold whitespace-nowrap min-w-[70px] text-right pr-4">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -326,21 +326,21 @@ export default function ExpensesPage() {
                 ) : (
                   expenses.map((e) => (
                     <TableRow key={e.id} className="hover:bg-muted/40 transition-colors text-xs">
-                      <TableCell className="font-medium whitespace-nowrap">
+                      <TableCell className="font-medium whitespace-nowrap py-3">
                         {formatDate(e.expenseDate)}
                       </TableCell>
-                      <TableCell className="font-semibold text-foreground">{e.title}</TableCell>
-                      <TableCell>
+                      <TableCell className="font-semibold text-foreground py-3 whitespace-nowrap">{e.title}</TableCell>
+                      <TableCell className="text-center py-3 whitespace-nowrap">
                         <Badge variant="secondary" className="text-[10px]">
                           {e.category}
                         </Badge>
                       </TableCell>
-                      <TableCell className="font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap">
+                      <TableCell className="font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap text-right py-3">
                         -{formatCurrency(e.amount, e.currency)}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{e.paymentMethod}</TableCell>
-                      <TableCell className="text-muted-foreground italic">{e.remark || '-'}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-muted-foreground text-center py-3 whitespace-nowrap">{e.paymentMethod}</TableCell>
+                      <TableCell className="text-muted-foreground italic py-3 max-w-xs truncate">{e.remark || '-'}</TableCell>
+                      <TableCell className="text-right py-3 pr-4 whitespace-nowrap">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -361,3 +361,4 @@ export default function ExpensesPage() {
     </div>
   );
 }
+

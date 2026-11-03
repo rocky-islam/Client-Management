@@ -182,3 +182,4 @@ Sign in with the administrator credentials:
 
 ## 📄 License
 MIT License. Created for Rocky Business Management.
+

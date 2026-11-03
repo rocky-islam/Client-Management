@@ -223,3 +223,4 @@ export function ProjectDetailsClientActions({ project }: { project: any }) {
     </>
   );
 }
+

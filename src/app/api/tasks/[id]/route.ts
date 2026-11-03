@@ -69,3 +69,4 @@ export async function DELETE(
     return NextResponse.json({ error: error.message || 'Failed to delete task' }, { status: 500 });
   }
 }
+

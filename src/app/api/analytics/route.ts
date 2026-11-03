@@ -16,33 +16,39 @@ export async function GET(request: Request) {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
 
-    // Fetch all user projects (not deleted)
-    const projects = await prisma.project.findMany({
-      where: {
-        userId: user.id,
-        isDeleted: false,
-      },
-      include: {
-        client: { select: { id: true, name: true, companyName: true } },
-        payments: { where: { status: 'COMPLETED' } },
-        monthlyAssignments: { where: { isActive: true } },
-      },
-      orderBy: { projectDate: 'desc' },
-    });
-
-    // Fetch all completed payments
-    const payments = await prisma.payment.findMany({
-      where: {
-        userId: user.id,
-        status: 'COMPLETED',
-      },
-      orderBy: { paymentDate: 'desc' },
-    });
-
-    // Fetch all expenses
-    const expenses = await prisma.expense.findMany({
-      where: { userId: user.id },
-    });
+    // Parallelize all analytics queries in a single round-trip
+    const [projects, payments, expenses, monthlyTargetObj] = await Promise.all([
+      prisma.project.findMany({
+        where: {
+          userId: user.id,
+          isDeleted: false,
+        },
+        include: {
+          client: { select: { id: true, name: true, companyName: true } },
+          payments: { where: { status: 'COMPLETED' } },
+          monthlyAssignments: { where: { isActive: true } },
+        },
+        orderBy: { projectDate: 'desc' },
+      }),
+      prisma.payment.findMany({
+        where: {
+          userId: user.id,
+          status: 'COMPLETED',
+        },
+        orderBy: { paymentDate: 'desc' },
+      }),
+      prisma.expense.findMany({
+        where: { userId: user.id },
+      }),
+      prisma.target.findFirst({
+        where: {
+          userId: user.id,
+          year: currentYear,
+          month: currentMonth,
+          targetType: 'MONTHLY_REVENUE',
+        },
+      }),
+    ]);
 
     // 1. KPI Calculations
     let totalProjects = projects.length;
@@ -102,14 +108,6 @@ export async function GET(request: Request) {
     const monthlyRevenue = currentMonthPayments.reduce((s, p) => s + Number(p.amount || 0), 0);
 
     // Current Month Target
-    const monthlyTargetObj = await prisma.target.findFirst({
-      where: {
-        userId: user.id,
-        year: currentYear,
-        month: currentMonth,
-        targetType: 'MONTHLY_REVENUE',
-      },
-    });
     const monthlyTarget = monthlyTargetObj ? Number(monthlyTargetObj.targetAmount) : 0;
     const targetAchievement = calculateAchievement(monthlyRevenue, monthlyTarget);
 

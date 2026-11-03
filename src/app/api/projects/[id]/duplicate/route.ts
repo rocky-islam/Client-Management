@@ -74,3 +74,4 @@ export async function POST(
     return NextResponse.json({ error: error.message || 'Failed to duplicate project' }, { status: 500 });
   }
 }
+
