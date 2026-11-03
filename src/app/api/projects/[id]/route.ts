@@ -145,6 +145,80 @@ export async function PUT(
   }
 }
 
+export async function PATCH(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const user = await requireAuth();
+    const body = await request.json();
+
+    const existingProject = await prisma.project.findFirst({
+      where: { id: params.id, userId: user.id },
+    });
+
+    if (!existingProject) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    const dataToUpdate: any = {};
+
+    if (body.orderStatus !== undefined) {
+      dataToUpdate.orderStatus = body.orderStatus;
+      if (body.orderStatus === 'DELIVERED') {
+        dataToUpdate.actualDeliveryDate = new Date();
+        dataToUpdate.progressPercentage = 100;
+        if (!existingProject.deliveryStatementDate) {
+          dataToUpdate.deliveryStatementDate = new Date();
+        }
+      }
+    }
+
+    if (body.deliveryStatementDate !== undefined) {
+      dataToUpdate.deliveryStatementDate = body.deliveryStatementDate ? new Date(body.deliveryStatementDate) : null;
+    }
+
+    if (body.deadline !== undefined) {
+      dataToUpdate.deadline = new Date(body.deadline);
+    }
+
+    if (body.remark !== undefined) {
+      dataToUpdate.remark = body.remark || null;
+    }
+
+    if (body.priority !== undefined) {
+      dataToUpdate.priority = body.priority;
+    }
+
+    if (body.progressPercentage !== undefined) {
+      dataToUpdate.progressPercentage = Math.min(100, Math.max(0, Number(body.progressPercentage)));
+    }
+
+    const updated = await prisma.project.update({
+      where: { id: params.id },
+      data: dataToUpdate,
+      include: {
+        client: true,
+      },
+    });
+
+    await logActivity({
+      userId: user.id,
+      actionType: 'STATUS_CHANGED',
+      entityType: 'PROJECT',
+      entityId: updated.id,
+      description: `Quick updated project "${updated.name}" (${updated.orderId}) to status: ${updated.orderStatus}`,
+      oldValues: { orderStatus: existingProject.orderStatus },
+      newValues: { orderStatus: updated.orderStatus },
+    });
+
+    return NextResponse.json({ success: true, project: updated });
+  } catch (error: any) {
+    console.error('Project PATCH error:', error);
+    return NextResponse.json({ error: error.message || 'Failed to patch project' }, { status: 500 });
+  }
+}
+
 export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }

@@ -32,6 +32,11 @@ import {
   ChevronLeft,
   ChevronRight,
   SlidersHorizontal,
+  AlertTriangle,
+  Flame,
+  Check,
+  CheckCircle2,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,7 +61,8 @@ import {
 } from '@/components/ui/table';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { calculateTimeLeft, calculateOutstandingAmount } from '@/lib/calculations';
-import { PROJECT_STATUSES, SALES_TYPES, DEFAULT_PROFILES, DEFAULT_SOURCES } from '@/lib/constants';
+import { PROJECT_STATUSES, DEFAULT_PROFILES } from '@/lib/constants';
+import { differenceInCalendarDays, startOfDay } from 'date-fns';
 import { toast } from 'sonner';
 
 export interface ProjectTableItem {
@@ -95,13 +101,15 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
   const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
+  const [quickFilter, setQuickFilter] = useState<'ALL' | 'URGENT' | 'OVERDUE' | 'WIP' | 'DELIVERED'>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [profileFilter, setProfileFilter] = useState<string>('ALL');
   const [sourceFilter, setSourceFilter] = useState<string>('ALL');
   const [salesTypeFilter, setSalesTypeFilter] = useState<string>('ALL');
   const [rowSelection, setRowSelection] = useState({});
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
 
-  // Column visibility state (primary columns visible by default)
+  // Column visibility state (primary 12 columns visible by default)
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
     select: true,
     projectDate: true,
@@ -128,13 +136,86 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
     priority: false,
   });
 
+  // Calculate high-level urgency counts for quick tabs and banner
+  const { urgentCount, overdueCount, wipCount, deliveredCount } = useMemo(() => {
+    const today = startOfDay(new Date());
+    let urgent = 0;
+    let overdue = 0;
+    let wip = 0;
+    let delivered = 0;
+
+    data.forEach((p) => {
+      const isDeliveredOrCancelled = p.orderStatus === 'DELIVERED' || p.orderStatus === 'CANCELLED';
+      if (p.orderStatus === 'DELIVERED') delivered++;
+      if (p.orderStatus === 'WIP' || p.orderStatus === 'IN_REVIEW' || p.orderStatus === 'REVISION') wip++;
+
+      if (!isDeliveredOrCancelled) {
+        const target = startOfDay(new Date(p.deadline));
+        const diff = differenceInCalendarDays(target, today);
+        if (diff < 0) overdue++;
+        else if (diff <= 4) urgent++;
+      }
+    });
+
+    return { urgentCount: urgent, overdueCount: overdue, wipCount: wip, deliveredCount: delivered };
+  }, [data]);
+
+  // Fast inline status updater
+  const handleStatusChange = async (projectId: string, newStatus: string) => {
+    setUpdatingStatusId(projectId);
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: newStatus }),
+      });
+      if (!res.ok) throw new Error('Failed to update status');
+
+      if (newStatus === 'DELIVERED') {
+        toast.success('🎉 Project marked as Delivered!');
+      } else {
+        toast.success(`Project status updated to ${newStatus}`);
+      }
+
+      if (onRefresh) {
+        onRefresh();
+      } else {
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Error updating status');
+    } finally {
+      setUpdatingStatusId(null);
+    }
+  };
+
   // Filtered dataset
   const filteredData = useMemo(() => {
+    const today = startOfDay(new Date());
+
     return data.filter((item) => {
+      const isDeliveredOrCancelled = item.orderStatus === 'DELIVERED' || item.orderStatus === 'CANCELLED';
+      const targetDay = startOfDay(new Date(item.deadline));
+      const diffDays = differenceInCalendarDays(targetDay, today);
+
+      // Quick filter pill logic
+      if (quickFilter === 'URGENT') {
+        if (isDeliveredOrCancelled || diffDays < 0 || diffDays > 4) return false;
+      } else if (quickFilter === 'OVERDUE') {
+        if (isDeliveredOrCancelled || diffDays >= 0) return false;
+      } else if (quickFilter === 'WIP') {
+        if (item.orderStatus !== 'WIP' && item.orderStatus !== 'IN_REVIEW' && item.orderStatus !== 'REVISION') return false;
+      } else if (quickFilter === 'DELIVERED') {
+        if (item.orderStatus !== 'DELIVERED') return false;
+      }
+
+      // Dropdown filters
       if (statusFilter !== 'ALL' && item.orderStatus !== statusFilter) return false;
       if (profileFilter !== 'ALL' && item.profileName !== profileFilter) return false;
       if (sourceFilter !== 'ALL' && item.projectSource !== sourceFilter) return false;
       if (salesTypeFilter !== 'ALL' && item.salesType !== salesTypeFilter) return false;
+
+      // Global search filter
       if (globalFilter) {
         const query = globalFilter.toLowerCase();
         const matchesClient = item.client?.name?.toLowerCase().includes(query);
@@ -148,14 +229,14 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
       }
       return true;
     });
-  }, [data, statusFilter, profileFilter, sourceFilter, salesTypeFilter, globalFilter]);
+  }, [data, quickFilter, statusFilter, profileFilter, sourceFilter, salesTypeFilter, globalFilter]);
 
   const handleDuplicate = async (id: string) => {
     try {
       const res = await fetch(`/api/projects/${id}/duplicate`, { method: 'POST' });
       if (!res.ok) throw new Error('Failed to duplicate project');
       toast.success('Project duplicated successfully');
-      onRefresh?.();
+      onRefresh ? onRefresh() : router.refresh();
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -167,7 +248,7 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
       if (!res.ok) throw new Error('Failed to toggle archive');
       const json = await res.json();
       toast.success(json.isArchived ? 'Project archived' : 'Project unarchived');
-      onRefresh?.();
+      onRefresh ? onRefresh() : router.refresh();
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -179,7 +260,7 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
       const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete project');
       toast.success('Project moved to trash');
-      onRefresh?.();
+      onRefresh ? onRefresh() : router.refresh();
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -237,7 +318,10 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
     toast.success('Exported projects to CSV');
   };
 
-  // Define columns in the EXACT required order with strict responsive sizing
+  // Define columns in the exact required sequence:
+  // 1. Date, 2. Client Name, 3. Profile Name, 4. Order ID, 5. Value,
+  // 6. Order Status, 7. Project Deadline, 8. Time Left, 9. Delivery Statement Date,
+  // 10. Remark, 11. Sales Type, 12. Actions
   const columns = useMemo<ColumnDef<ProjectTableItem>[]>(
     () => [
       {
@@ -328,7 +412,7 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
           </Badge>
         ),
       },
-      // 4. Order ID (strictly whitespace-nowrap, never hyphen-wraps)
+      // 4. Order ID (strictly whitespace-nowrap)
       {
         id: 'orderId',
         accessorKey: 'orderId',
@@ -373,31 +457,62 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
           </div>
         ),
       },
-      // 6. Order Status
+      // 6. Order Status (Interactive 1-click status dropdown switcher)
       {
         id: 'orderStatus',
         accessorKey: 'orderStatus',
         meta: {
-          className: 'w-[130px] min-w-[120px] whitespace-nowrap text-center',
+          className: 'w-[140px] min-w-[130px] whitespace-nowrap text-center',
         },
         header: () => <div className="text-center">Order Status</div>,
         cell: ({ row }) => {
           const status = row.getValue('orderStatus') as string;
           const config = PROJECT_STATUSES.find((s) => s.value === status);
+          const prj = row.original;
+          const isUpdating = updatingStatusId === prj.id;
+
           return (
             <div className="flex justify-center">
-              <span
-                className={`inline-flex items-center justify-center rounded-md px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${
-                  config?.color || 'bg-slate-100 text-slate-800'
-                }`}
-              >
-                {config?.label || status}
-              </span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    disabled={isUpdating}
+                    className={`group inline-flex items-center gap-1 rounded-md px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap transition-transform hover:scale-105 cursor-pointer shadow-2xs ${
+                      config?.color || 'bg-slate-100 text-slate-800'
+                    }`}
+                    title="Click to quickly change order status"
+                  >
+                    {isUpdating ? (
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                    ) : null}
+                    <span>{config?.label || status}</span>
+                    <ChevronDown className="h-2.5 w-2.5 opacity-60 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center" className="w-44 text-xs">
+                  <DropdownMenuLabel className="text-[11px]">Quick Change Status</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {PROJECT_STATUSES.map((s) => (
+                    <DropdownMenuItem
+                      key={s.value}
+                      disabled={status === s.value}
+                      onClick={() => handleStatusChange(prj.id, s.value)}
+                      className="flex items-center justify-between cursor-pointer text-xs"
+                    >
+                      <span className={status === s.value ? 'font-bold text-primary' : ''}>
+                        {s.label}
+                      </span>
+                      {status === s.value && <Check className="h-3.5 w-3.5 text-primary" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           );
         },
       },
-      // 7. Project Deadline (Now before Delivery Statement Date)
+      // 7. Project Deadline (Before Delivery Statement Date)
       {
         id: 'deadline',
         accessorKey: 'deadline',
@@ -425,31 +540,72 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
           </div>
         ),
       },
-      // 8. Time Left (Now before Delivery Statement Date)
+      // 8. Time Left (Prominent urgent badges: 4d, 3d, 2d, 1d, Today, Overdue)
       {
         id: 'timeLeft',
         meta: {
-          className: 'w-[130px] min-w-[120px] whitespace-nowrap text-center',
+          className: 'w-[145px] min-w-[135px] whitespace-nowrap text-center',
         },
         header: () => <div className="text-center">Time Left</div>,
         cell: ({ row }) => {
+          const prj = row.original;
+          const isDeliveredOrCancelled = prj.orderStatus === 'DELIVERED' || prj.orderStatus === 'CANCELLED';
+          const targetDay = startOfDay(new Date(prj.deadline));
+          const today = startOfDay(new Date());
+          const diffDays = differenceInCalendarDays(targetDay, today);
           const res = calculateTimeLeft(
-            row.original.deadline,
-            row.original.orderStatus,
-            (row.original as any).actualDeliveryDate
+            prj.deadline,
+            prj.orderStatus,
+            (prj as any).actualDeliveryDate
           );
+
+          let customBadge = null;
+          if (!isDeliveredOrCancelled) {
+            if (diffDays < 0) {
+              customBadge = (
+                <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-bold whitespace-nowrap bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 shadow-xs">
+                  <Flame className="h-3 w-3 text-rose-600 dark:text-rose-400" />
+                  {Math.abs(diffDays)}d overdue
+                </span>
+              );
+            } else if (diffDays === 0) {
+              customBadge = (
+                <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-bold whitespace-nowrap bg-amber-500/25 text-amber-900 dark:text-amber-200 border border-amber-400 dark:border-amber-700 shadow-xs animate-pulse">
+                  <AlertTriangle className="h-3 w-3 text-amber-600" />
+                  Due Today
+                </span>
+              );
+            } else if (diffDays === 1) {
+              customBadge = (
+                <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-bold whitespace-nowrap bg-amber-500/20 text-amber-900 dark:text-amber-200 border border-amber-400 dark:border-amber-700 shadow-xs">
+                  <Clock className="h-3 w-3 text-amber-600" />
+                  1 day left
+                </span>
+              );
+            } else if (diffDays <= 4) {
+              customBadge = (
+                <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 shadow-xs">
+                  <Clock className="h-3 w-3 text-amber-600" />
+                  {diffDays} days left
+                </span>
+              );
+            }
+          }
+
           return (
             <div className="flex justify-center">
-              <span
-                className={`inline-flex items-center justify-center rounded-md px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap shadow-xs ${res.badgeColor}`}
-              >
-                {res.text}
-              </span>
+              {customBadge || (
+                <span
+                  className={`inline-flex items-center justify-center rounded-md px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap shadow-xs ${res.badgeColor}`}
+                >
+                  {res.text}
+                </span>
+              )}
             </div>
           );
         },
       },
-      // 9. Delivery Statement Date
+      // 9. Delivery Statement Date (After Time Left)
       {
         id: 'deliveryStatementDate',
         accessorKey: 'deliveryStatementDate',
@@ -516,7 +672,7 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
       {
         id: 'actions',
         meta: {
-          className: 'w-[70px] min-w-[65px] text-right pr-4',
+          className: 'w-[75px] min-w-[70px] text-right pr-4',
         },
         header: () => <div className="text-right pr-2">Actions</div>,
         cell: ({ row }) => {
@@ -530,7 +686,7 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
                     <span className="sr-only">Open menu</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-52 text-xs">
                   <DropdownMenuLabel className="text-xs">Project Actions</DropdownMenuLabel>
                   <DropdownMenuItem asChild>
                     <Link href={`/projects/${prj.id}`} className="flex items-center gap-2 cursor-pointer">
@@ -544,12 +700,37 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
                       <span>Edit Project</span>
                     </Link>
                   </DropdownMenuItem>
+
+                  {/* 1-Click Fast Mark as Delivered */}
+                  {prj.orderStatus !== 'DELIVERED' && (
+                    <DropdownMenuItem
+                      onClick={() => handleStatusChange(prj.id, 'DELIVERED')}
+                      className="flex items-center gap-2 cursor-pointer text-emerald-600 focus:text-emerald-700 font-medium"
+                    >
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      <span>Mark Delivered</span>
+                    </DropdownMenuItem>
+                  )}
+
+                  <DropdownMenuItem
+                    onClick={() => {
+                      const text = `Order ID: ${prj.orderId} | Client: ${prj.client?.name || ''} | Value: ${formatCurrency(prj.value, prj.currency)} | Deadline: ${formatDate(prj.deadline)}`;
+                      navigator.clipboard.writeText(text);
+                      toast.success('Project details copied to clipboard');
+                    }}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <Copy className="h-4 w-4 text-slate-500" />
+                    <span>Copy Order Info</span>
+                  </DropdownMenuItem>
+
                   <DropdownMenuItem asChild>
                     <Link href={`/carry-forward?projectId=${prj.id}`} className="flex items-center gap-2 cursor-pointer">
                       <ArrowRightLeft className="h-4 w-4 text-indigo-500" />
                       <span>Carry Forward</span>
                     </Link>
                   </DropdownMenuItem>
+
                   <DropdownMenuItem
                     onClick={() => handleDuplicate(prj.id)}
                     className="flex items-center gap-2 cursor-pointer"
@@ -557,6 +738,7 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
                     <Copy className="h-4 w-4 text-emerald-500" />
                     <span>Duplicate</span>
                   </DropdownMenuItem>
+
                   <DropdownMenuItem
                     onClick={() => handleArchive(prj.id)}
                     className="flex items-center gap-2 cursor-pointer"
@@ -564,6 +746,7 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
                     <Archive className="h-4 w-4 text-slate-500" />
                     <span>{prj.isArchived ? 'Unarchive' : 'Archive'}</span>
                   </DropdownMenuItem>
+
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => handleDelete(prj.id)}
@@ -635,7 +818,7 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
         },
       },
     ],
-    []
+    [updatingStatusId]
   );
 
   const table = useReactTable({
@@ -661,7 +844,123 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
 
   return (
     <div className="space-y-4">
-      {/* Top Filter and Action Bar */}
+      {/* Quick Filter Tabs for High-Urgency Deadlines & Active States */}
+      <div className="flex flex-wrap items-center gap-1.5 pb-1">
+        <Button
+          variant={quickFilter === 'ALL' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setQuickFilter('ALL')}
+          className="h-8 text-xs rounded-full gap-1.5 shadow-2xs"
+        >
+          <span>All Projects</span>
+          <Badge
+            variant={quickFilter === 'ALL' ? 'secondary' : 'outline'}
+            className="text-[10px] py-0 px-1.5"
+          >
+            {data.length}
+          </Badge>
+        </Button>
+
+        <Button
+          variant={quickFilter === 'URGENT' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setQuickFilter(quickFilter === 'URGENT' ? 'ALL' : 'URGENT')}
+          className={`h-8 text-xs rounded-full gap-1.5 shadow-2xs ${
+            urgentCount > 0 && quickFilter !== 'URGENT'
+              ? 'border-amber-400 text-amber-700 bg-amber-500/10 hover:bg-amber-500/20 dark:text-amber-300 dark:border-amber-700 dark:bg-amber-950/40'
+              : ''
+          }`}
+        >
+          <Clock className="h-3.5 w-3.5 text-amber-500" />
+          <span>Due in ≤ 4 Days</span>
+          <Badge
+            variant="secondary"
+            className="text-[10px] py-0 px-1.5 bg-amber-500/20 text-amber-900 dark:text-amber-200 font-bold"
+          >
+            {urgentCount}
+          </Badge>
+        </Button>
+
+        <Button
+          variant={quickFilter === 'OVERDUE' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setQuickFilter(quickFilter === 'OVERDUE' ? 'ALL' : 'OVERDUE')}
+          className={`h-8 text-xs rounded-full gap-1.5 shadow-2xs ${
+            overdueCount > 0 && quickFilter !== 'OVERDUE'
+              ? 'border-rose-400 text-rose-700 bg-rose-500/10 hover:bg-rose-500/20 dark:text-rose-300 dark:border-rose-700 dark:bg-rose-950/40'
+              : ''
+          }`}
+        >
+          <Flame className="h-3.5 w-3.5 text-rose-500" />
+          <span>Overdue</span>
+          <Badge
+            variant="secondary"
+            className="text-[10px] py-0 px-1.5 bg-rose-500/20 text-rose-900 dark:text-rose-200 font-bold"
+          >
+            {overdueCount}
+          </Badge>
+        </Button>
+
+        <Button
+          variant={quickFilter === 'WIP' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setQuickFilter(quickFilter === 'WIP' ? 'ALL' : 'WIP')}
+          className="h-8 text-xs rounded-full gap-1.5 shadow-2xs"
+        >
+          <span>Active (WIP)</span>
+          <Badge variant="outline" className="text-[10px] py-0 px-1.5">
+            {wipCount}
+          </Badge>
+        </Button>
+
+        <Button
+          variant={quickFilter === 'DELIVERED' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setQuickFilter(quickFilter === 'DELIVERED' ? 'ALL' : 'DELIVERED')}
+          className="h-8 text-xs rounded-full gap-1.5 shadow-2xs"
+        >
+          <span>Delivered</span>
+          <Badge variant="outline" className="text-[10px] py-0 px-1.5">
+            {deliveredCount}
+          </Badge>
+        </Button>
+      </div>
+
+      {/* Deadline Color Legend & Alert Notice Bar */}
+      {(urgentCount > 0 || overdueCount > 0) && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300/70 bg-amber-500/10 dark:border-amber-800/60 dark:bg-amber-950/30 px-3.5 py-2.5 text-xs text-foreground">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <div>
+              <p className="font-semibold text-foreground">
+                Deadline Highlights: {urgentCount} project(s) due within 4 days
+                {overdueCount > 0 && ` • ${overdueCount} overdue project(s)`}
+              </p>
+              <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground pt-0.5">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-xs bg-amber-500/40 border border-amber-500 inline-block" />
+                  <span><strong>Amber row</strong>: Delivery in 4 days or less</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-xs bg-rose-500/40 border border-rose-500 inline-block" />
+                  <span><strong>Red row</strong>: Overdue deadline</span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setQuickFilter(quickFilter === 'URGENT' ? 'ALL' : 'URGENT')}
+            className="h-7 text-xs border-amber-400 dark:border-amber-700 font-medium"
+          >
+            {quickFilter === 'URGENT' ? 'Show All Rows' : 'Show Only Urgent (≤ 4 Days)'}
+          </Button>
+        </div>
+      )}
+
+      {/* Filter and Action Bar */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-1 flex-wrap items-center gap-2.5">
           {/* Global Search */}
@@ -715,7 +1014,7 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
           </select>
         </div>
 
-        {/* Right Buttons: Columns visibility & CSV export */}
+        {/* Right Buttons: Columns visibility, CSV export, Add Project */}
         <div className="flex items-center gap-2">
           {/* Column Visibility Selector */}
           <DropdownMenu>
@@ -765,7 +1064,7 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
         </div>
       </div>
 
-      {/* TanStack Table Container with clean horizontal scrolling and minimum width */}
+      {/* TanStack Table Container with clean horizontal scrolling and strict minimum width */}
       <div className="w-full overflow-hidden rounded-xl border bg-card shadow-sm">
         <Table className="w-full min-w-[1380px] text-xs">
           <TableHeader>
@@ -789,25 +1088,53 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && 'selected'}
-                  className="hover:bg-muted/40 transition-colors"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      className={cn(
-                        'px-3 py-3 align-middle',
-                        (cell.column.columnDef as any).meta?.className
-                      )}
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              table.getRowModel().rows.map((row) => {
+                const prj = row.original;
+                const isDeliveredOrCancelled = prj.orderStatus === 'DELIVERED' || prj.orderStatus === 'CANCELLED';
+                const targetDay = startOfDay(new Date(prj.deadline));
+                const today = startOfDay(new Date());
+                const diffDays = differenceInCalendarDays(targetDay, today);
+
+                // Row highlighting based on urgency:
+                // 1. Red tint for Overdue (< 0 days)
+                // 2. Amber tint for Urgent (<= 4 days left)
+                let rowBgClass = '';
+                let rowBorderClass = '';
+
+                if (!isDeliveredOrCancelled) {
+                  if (diffDays < 0) {
+                    rowBgClass = 'bg-rose-500/15 hover:bg-rose-500/25 dark:bg-rose-950/40 dark:hover:bg-rose-950/55 font-medium';
+                    rowBorderClass = 'border-l-4 border-l-rose-500';
+                  } else if (diffDays <= 4) {
+                    rowBgClass = 'bg-amber-500/15 hover:bg-amber-500/25 dark:bg-amber-950/40 dark:hover:bg-amber-950/55 font-medium';
+                    rowBorderClass = 'border-l-4 border-l-amber-500';
+                  }
+                }
+
+                return (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && 'selected'}
+                    className={cn(
+                      'transition-colors',
+                      rowBgClass || 'hover:bg-muted/40'
+                    )}
+                  >
+                    {row.getVisibleCells().map((cell, cellIdx) => (
+                      <TableCell
+                        key={cell.id}
+                        className={cn(
+                          'px-3 py-3 align-middle',
+                          (cell.column.columnDef as any).meta?.className,
+                          cellIdx === 0 && rowBorderClass
+                        )}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                );
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-36 text-center text-muted-foreground text-xs">
@@ -855,4 +1182,3 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
     </div>
   );
 }
-
