@@ -252,3 +252,4 @@ export function ClientActions({ client }: ClientActionsProps) {
     </div>
   );
 }
+

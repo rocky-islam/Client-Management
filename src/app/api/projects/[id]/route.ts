@@ -202,14 +202,20 @@ export async function PATCH(
       },
     });
 
+    const changeDescription = body.deadline
+      ? `Updated deadline for project "${updated.name}" (${updated.orderId}) to ${new Date(body.deadline).toISOString().split('T')[0]}`
+      : body.deliveryStatementDate !== undefined
+      ? `Updated delivery statement date for project "${updated.name}" (${updated.orderId})`
+      : `Quick updated project "${updated.name}" (${updated.orderId}) to status: ${updated.orderStatus}`;
+
     await logActivity({
       userId: user.id,
-      actionType: 'STATUS_CHANGED',
+      actionType: body.orderStatus ? 'STATUS_CHANGED' : 'PROJECT_UPDATED',
       entityType: 'PROJECT',
       entityId: updated.id,
-      description: `Quick updated project "${updated.name}" (${updated.orderId}) to status: ${updated.orderStatus}`,
-      oldValues: { orderStatus: existingProject.orderStatus },
-      newValues: { orderStatus: updated.orderStatus },
+      description: changeDescription,
+      oldValues: existingProject,
+      newValues: updated,
     });
 
     return NextResponse.json({ success: true, project: updated });

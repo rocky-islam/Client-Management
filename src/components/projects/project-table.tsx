@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -37,6 +37,9 @@ import {
   Check,
   CheckCircle2,
   Loader2,
+  Calendar,
+  Edit2,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,6 +55,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from '@/components/ui/popover';
+import {
   Table,
   TableBody,
   TableCell,
@@ -60,8 +68,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
-import { calculateTimeLeft, calculateOutstandingAmount } from '@/lib/calculations';
-import { PROJECT_STATUSES, DEFAULT_PROFILES } from '@/lib/constants';
+import { calculateOutstandingAmount } from '@/lib/calculations';
+import { PROJECT_STATUSES } from '@/lib/constants';
 import { differenceInCalendarDays, startOfDay } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -95,6 +103,443 @@ interface ProjectTableProps {
   data: ProjectTableItem[];
   onRefresh?: () => void;
   title?: string;
+}
+
+/**
+ * Live Ticking Countdown Component
+ * Displays days, hours, minutes, and seconds live ticking every second!
+ */
+export function LiveCountdown({
+  deadline,
+  orderStatus,
+  actualDeliveryDate,
+}: {
+  deadline: string | Date;
+  orderStatus: string;
+  actualDeliveryDate?: string | Date | null;
+}) {
+  const [timeText, setTimeText] = useState<{
+    text: string;
+    isOverdue: boolean;
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+  }>({
+    text: 'Calculating...',
+    isOverdue: false,
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+  });
+
+  useEffect(() => {
+    if (orderStatus === 'DELIVERED' || orderStatus === 'CANCELLED') return;
+
+    const updateTicker = () => {
+      const target = new Date(deadline);
+      // If time component is 00:00:00, default to end of day (23:59:59.999) so deadline covers the full day
+      if (target.getHours() === 0 && target.getMinutes() === 0 && target.getSeconds() === 0) {
+        target.setHours(23, 59, 59, 999);
+      }
+
+      const now = Date.now();
+      const diffMs = target.getTime() - now;
+      const isOverdue = diffMs < 0;
+      const absMs = Math.abs(diffMs);
+
+      const days = Math.floor(absMs / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((absMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((absMs % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((absMs % (1000 * 60)) / 1000);
+
+      const parts: string[] = [];
+      if (days > 0) {
+        parts.push(`${days}d`);
+      }
+      parts.push(`${hours.toString().padStart(2, '0')}h`);
+      parts.push(`${minutes.toString().padStart(2, '0')}m`);
+      parts.push(`${seconds.toString().padStart(2, '0')}s`);
+
+      const text = `${parts.join(' ')} ${isOverdue ? 'overdue' : 'left'}`;
+
+      setTimeText({
+        text,
+        isOverdue,
+        days,
+        hours,
+        minutes,
+        seconds,
+      });
+    };
+
+    updateTicker();
+    const timer = setInterval(updateTicker, 1000);
+    return () => clearInterval(timer);
+  }, [deadline, orderStatus]);
+
+  if (orderStatus === 'DELIVERED') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+        <CheckCircle2 className="h-3 w-3" />
+        Delivered
+      </span>
+    );
+  }
+
+  if (orderStatus === 'CANCELLED') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+        Cancelled
+      </span>
+    );
+  }
+
+  // Overdue: Red badge with pulsing flame
+  if (timeText.isOverdue) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-0.5 font-mono text-[11px] font-bold whitespace-nowrap bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 shadow-xs">
+        <Flame className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400 animate-pulse shrink-0" />
+        <span>{timeText.text}</span>
+      </span>
+    );
+  }
+
+  // Urgent: <= 4 days left
+  if (timeText.days <= 4) {
+    const isCritical = timeText.days < 1;
+    return (
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-0.5 font-mono text-[11px] font-bold whitespace-nowrap border shadow-xs ${
+          isCritical
+            ? 'bg-rose-500/15 text-rose-800 dark:text-rose-200 border-rose-400 dark:border-rose-700 animate-pulse'
+            : 'bg-amber-500/20 text-amber-900 dark:text-amber-200 border-amber-400 dark:border-amber-700'
+        }`}
+      >
+        {isCritical ? (
+          <AlertTriangle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+        ) : (
+          <Clock className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+        )}
+        <span>{timeText.text}</span>
+      </span>
+    );
+  }
+
+  // Safe (> 4 days left)
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-0.5 font-mono text-[11px] font-medium whitespace-nowrap bg-muted/80 text-foreground border border-border/60 shadow-2xs">
+      <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
+      <span>{timeText.text}</span>
+    </span>
+  );
+}
+
+/**
+ * Inline Deadline Editor Popover
+ * Allows clicking right on the deadline table cell to change or extend date with 1-click presets!
+ */
+export function InlineDeadlineEditor({
+  projectId,
+  currentDeadline,
+  onUpdated,
+}: {
+  projectId: string;
+  currentDeadline: string | Date;
+  onUpdated?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const d = new Date(currentDeadline);
+    return !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : '';
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleUpdate = async (newDateStr: string) => {
+    if (!newDateStr) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deadline: newDateStr }),
+      });
+      if (!res.ok) throw new Error('Failed to update deadline');
+
+      toast.success(`Deadline updated to ${formatDate(newDateStr)}`);
+      setOpen(false);
+      onUpdated?.();
+    } catch (e: any) {
+      toast.error(e.message || 'Error updating deadline');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePreset = (daysToAdd: number) => {
+    const base = new Date();
+    base.setDate(base.getDate() + daysToAdd);
+    const dateStr = base.toISOString().split('T')[0];
+    setSelectedDate(dateStr);
+    handleUpdate(dateStr);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="group inline-flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted hover:text-primary transition-all border border-border/50 hover:border-primary/50 cursor-pointer whitespace-nowrap shadow-2xs"
+          title="Click to directly change project deadline"
+        >
+          <Calendar className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+          <span>{formatDate(currentDeadline)}</span>
+          <Edit2 className="h-2.5 w-2.5 opacity-0 group-hover:opacity-80 transition-opacity text-primary ml-0.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="center" className="w-72 p-3 text-xs space-y-3 shadow-lg">
+        <div className="flex items-center justify-between pb-1.5 border-b">
+          <span className="font-semibold text-foreground flex items-center gap-1.5">
+            <Calendar className="h-4 w-4 text-primary" />
+            Quick Change Deadline
+          </span>
+          <Badge variant="outline" className="text-[9px] px-1 py-0">Inline Edit</Badge>
+        </div>
+
+        {/* Date Input */}
+        <div className="space-y-1">
+          <label className="text-[11px] text-muted-foreground font-medium">Select Exact Date:</label>
+          <Input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="h-8 text-xs font-mono"
+          />
+        </div>
+
+        {/* Quick extension presets */}
+        <div className="space-y-1.5">
+          <label className="text-[11px] text-muted-foreground font-medium">Quick Presets (From Today):</label>
+          <div className="grid grid-cols-3 gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handlePreset(1)}
+              className="h-7 text-[10px] px-1 hover:border-primary hover:text-primary"
+            >
+              +1 Day
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handlePreset(2)}
+              className="h-7 text-[10px] px-1 hover:border-primary hover:text-primary"
+            >
+              +2 Days
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handlePreset(3)}
+              className="h-7 text-[10px] px-1 hover:border-primary hover:text-primary"
+            >
+              +3 Days
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handlePreset(7)}
+              className="h-7 text-[10px] px-1 hover:border-primary hover:text-primary"
+            >
+              +1 Week
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handlePreset(14)}
+              className="h-7 text-[10px] px-1 hover:border-primary hover:text-primary"
+            >
+              +2 Weeks
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handlePreset(30)}
+              className="h-7 text-[10px] px-1 hover:border-primary hover:text-primary"
+            >
+              +1 Month
+            </Button>
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <div className="flex items-center justify-end gap-2 pt-1.5 border-t">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setOpen(false)}
+            className="h-7 text-xs"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            disabled={loading || !selectedDate}
+            onClick={() => handleUpdate(selectedDate)}
+            className="h-7 text-xs shadow-2xs font-medium"
+          >
+            {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+            Save Deadline
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/**
+ * Inline Delivery Statement Date Editor
+ * Allows clicking right on the Delivery Statement Date cell to set or modify it directly!
+ */
+export function InlineDeliveryStatementEditor({
+  projectId,
+  currentDate,
+  onUpdated,
+}: {
+  projectId: string;
+  currentDate?: string | Date | null;
+  onUpdated?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(() => {
+    if (!currentDate) return '';
+    const d = new Date(currentDate);
+    return !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : '';
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleUpdate = async (newDateStr: string | null) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deliveryStatementDate: newDateStr }),
+      });
+      if (!res.ok) throw new Error('Failed to update statement date');
+
+      toast.success(
+        newDateStr
+          ? `Delivery Statement Date set to ${formatDate(newDateStr)}`
+          : 'Delivery Statement Date cleared'
+      );
+      setOpen(false);
+      onUpdated?.();
+    } catch (e: any) {
+      toast.error(e.message || 'Error updating statement date');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToday = () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    setSelectedDate(todayStr);
+    handleUpdate(todayStr);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="group inline-flex items-center justify-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-all cursor-pointer whitespace-nowrap"
+          title="Click to change or set Delivery Statement Date"
+        >
+          {currentDate ? (
+            <>
+              <span className="font-medium text-foreground">{formatDate(currentDate)}</span>
+              <Edit2 className="h-2.5 w-2.5 opacity-0 group-hover:opacity-80 transition-opacity text-primary ml-0.5" />
+            </>
+          ) : (
+            <span className="text-[11px] text-muted-foreground/70 border border-dashed border-border/80 px-2 py-0.5 rounded hover:border-primary hover:text-primary">
+              + Set Date
+            </span>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="center" className="w-64 p-3 text-xs space-y-3 shadow-lg">
+        <div className="flex items-center justify-between pb-1.5 border-b">
+          <span className="font-semibold text-foreground">Statement Date</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleToday}
+            className="h-6 text-[10px] px-1.5"
+          >
+            Today
+          </Button>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-[11px] text-muted-foreground font-medium">Select Date:</label>
+          <Input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="h-8 text-xs font-mono"
+          />
+        </div>
+
+        <div className="flex items-center justify-between gap-2 pt-1 border-t">
+          {currentDate ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => handleUpdate(null)}
+              className="h-7 text-xs text-destructive hover:bg-destructive/10 px-2"
+            >
+              Clear
+            </Button>
+          ) : (
+            <div />
+          )}
+          <div className="flex items-center gap-1.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setOpen(false)}
+              className="h-7 text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={loading || !selectedDate}
+              onClick={() => handleUpdate(selectedDate)}
+              className="h-7 text-xs font-medium"
+            >
+              {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+              Save
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 export function ProjectTable({ data, onRefresh, title = 'All Projects' }: ProjectTableProps) {
@@ -290,7 +735,6 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
       'Currency',
       'Order Status',
       'Project Deadline',
-      'Time Left',
       'Delivery Statement Date',
       'Remark',
       'Sales Type',
@@ -306,7 +750,6 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
       p.currency,
       p.orderStatus,
       formatDate(p.deadline),
-      calculateTimeLeft(p.deadline, p.orderStatus, (p as any).actualDeliveryDate).text,
       formatDate(p.deliveryStatementDate),
       `"${p.remark || ''}"`,
       p.salesType,
@@ -521,12 +964,12 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
           );
         },
       },
-      // 7. Project Deadline (Before Delivery Statement Date)
+      // 7. Project Deadline (DIRECTLY EDITABLE INLINE IN THE TABLE)
       {
         id: 'deadline',
         accessorKey: 'deadline',
         meta: {
-          className: 'w-[135px] min-w-[125px] whitespace-nowrap text-center',
+          className: 'w-[150px] min-w-[140px] whitespace-nowrap text-center',
         },
         header: ({ column }) => (
           <div className="flex justify-center">
@@ -542,91 +985,55 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
           </div>
         ),
         cell: ({ row }) => (
-          <div className="text-center">
-            <span className="text-xs font-medium whitespace-nowrap text-foreground">
-              {formatDate(row.getValue('deadline'))}
-            </span>
+          <div className="flex justify-center">
+            <InlineDeadlineEditor
+              projectId={row.original.id}
+              currentDeadline={row.original.deadline}
+              onUpdated={onRefresh ? onRefresh : () => router.refresh()}
+            />
           </div>
         ),
       },
-      // 8. Time Left (Prominent urgent badges: 4d, 3d, 2d, 1d, Today, Overdue)
+      // 8. Time Left (LIVE TICKING COUNTDOWN: DAYS, HOURS, MINUTES, SECONDS)
       {
         id: 'timeLeft',
         meta: {
-          className: 'w-[145px] min-w-[135px] whitespace-nowrap text-center',
+          className: 'w-[195px] min-w-[185px] whitespace-nowrap text-center',
         },
-        header: () => <div className="text-center">Time Left</div>,
+        header: () => (
+          <div className="flex items-center justify-center gap-1.5">
+            <span>Time Left</span>
+            <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" title="Live ticker active" />
+          </div>
+        ),
         cell: ({ row }) => {
           const prj = row.original;
-          const isDeliveredOrCancelled = prj.orderStatus === 'DELIVERED' || prj.orderStatus === 'CANCELLED';
-          const targetDay = startOfDay(new Date(prj.deadline));
-          const today = startOfDay(new Date());
-          const diffDays = differenceInCalendarDays(targetDay, today);
-          const res = calculateTimeLeft(
-            prj.deadline,
-            prj.orderStatus,
-            (prj as any).actualDeliveryDate
-          );
-
-          let customBadge = null;
-          if (!isDeliveredOrCancelled) {
-            if (diffDays < 0) {
-              customBadge = (
-                <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-bold whitespace-nowrap bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 shadow-xs">
-                  <Flame className="h-3 w-3 text-rose-600 dark:text-rose-400" />
-                  {Math.abs(diffDays)}d overdue
-                </span>
-              );
-            } else if (diffDays === 0) {
-              customBadge = (
-                <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-bold whitespace-nowrap bg-amber-500/25 text-amber-900 dark:text-amber-200 border border-amber-400 dark:border-amber-700 shadow-xs animate-pulse">
-                  <AlertTriangle className="h-3 w-3 text-amber-600" />
-                  Due Today
-                </span>
-              );
-            } else if (diffDays === 1) {
-              customBadge = (
-                <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-bold whitespace-nowrap bg-amber-500/20 text-amber-900 dark:text-amber-200 border border-amber-400 dark:border-amber-700 shadow-xs">
-                  <Clock className="h-3 w-3 text-amber-600" />
-                  1 day left
-                </span>
-              );
-            } else if (diffDays <= 4) {
-              customBadge = (
-                <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 shadow-xs">
-                  <Clock className="h-3 w-3 text-amber-600" />
-                  {diffDays} days left
-                </span>
-              );
-            }
-          }
-
           return (
             <div className="flex justify-center">
-              {customBadge || (
-                <span
-                  className={`inline-flex items-center justify-center rounded-md px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap shadow-xs ${res.badgeColor}`}
-                >
-                  {res.text}
-                </span>
-              )}
+              <LiveCountdown
+                deadline={prj.deadline}
+                orderStatus={prj.orderStatus}
+                actualDeliveryDate={(prj as any).actualDeliveryDate}
+              />
             </div>
           );
         },
       },
-      // 9. Delivery Statement Date (After Time Left)
+      // 9. Delivery Statement Date (DIRECTLY EDITABLE INLINE IN THE TABLE)
       {
         id: 'deliveryStatementDate',
         accessorKey: 'deliveryStatementDate',
         meta: {
-          className: 'w-[145px] min-w-[135px] whitespace-nowrap text-center',
+          className: 'w-[150px] min-w-[140px] whitespace-nowrap text-center',
         },
         header: () => <div className="text-center">Delivery Statement Date</div>,
         cell: ({ row }) => (
-          <div className="text-center">
-            <span className="text-xs text-muted-foreground whitespace-nowrap font-medium">
-              {formatDate(row.getValue('deliveryStatementDate'))}
-            </span>
+          <div className="flex justify-center">
+            <InlineDeliveryStatementEditor
+              projectId={row.original.id}
+              currentDate={row.original.deliveryStatementDate}
+              onUpdated={onRefresh ? onRefresh : () => router.refresh()}
+            />
           </div>
         ),
       },
@@ -827,7 +1234,7 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
         },
       },
     ],
-    [updatingStatusId]
+    [updatingStatusId, onRefresh]
   );
 
   const table = useReactTable({
@@ -954,6 +1361,10 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
                   <span className="w-3 h-3 rounded-xs bg-rose-500/40 border border-rose-500 inline-block" />
                   <span><strong>Red row</strong>: Overdue deadline</span>
                 </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span><strong>Live Ticker</strong>: Seconds ticking in real time</span>
+                </span>
               </div>
             </div>
           </div>
@@ -1073,9 +1484,9 @@ export function ProjectTable({ data, onRefresh, title = 'All Projects' }: Projec
         </div>
       </div>
 
-      {/* TanStack Table Container with clean horizontal scrolling and strict minimum width */}
+      {/* TanStack Table Container with clean horizontal scrolling and minimum width */}
       <div className="w-full overflow-hidden rounded-xl border bg-card shadow-sm">
-        <Table className="w-full min-w-[1380px] text-xs">
+        <Table className="w-full min-w-[1480px] text-xs">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="bg-muted/40 hover:bg-muted/40">
