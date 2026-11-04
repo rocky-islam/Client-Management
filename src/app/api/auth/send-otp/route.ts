@@ -78,6 +78,24 @@ export async function POST(request: Request) {
     });
 
     if (!sendResult.success) {
+      const isDomainRestricted =
+        sendResult.error?.includes('You can only send testing emails to your own email address') ||
+        sendResult.error?.includes('verify a domain at resend.com/domains');
+
+      if (isDomainRestricted) {
+        console.warn(
+          `[RESEND RESTRICTION] Recipient ${normalizedEmail} blocked by Resend free tier. Dev simulation enabled. Code: ${otp}`
+        );
+        return NextResponse.json({
+          success: true,
+          message: 'ভেরিফিকেশন কোড তৈরি হয়েছে (Resend টেস্ট মোড)।',
+          devMode: true,
+          devOtp: otp,
+          warning:
+            'Resend ফ্রি টেস্ট ডোমেইনে সরাসরি ইমেইল শুধু mdrockyislam.office@gmail.com এ যায়। টেস্ট সম্পন্ন করতে নিচে ওটিপি কোডটি প্রদান করা হয়েছে।',
+        });
+      }
+
       return NextResponse.json(
         {
           error:
@@ -92,7 +110,6 @@ export async function POST(request: Request) {
       success: true,
       message: `${normalizedEmail} এ ৬-ডিজিটের ভেরিফিকেশন কোড পাঠানো হয়েছে।`,
       devMode: sendResult.devMode || false,
-      // If dev mode (no API key set yet), supply code so local testing never gets blocked
       devOtp: sendResult.devMode ? otp : undefined,
     });
   } catch (error: any) {

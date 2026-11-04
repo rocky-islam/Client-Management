@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { toast } from 'sonner';
 
 type SignupStep = 'FORM' | 'OTP';
@@ -44,6 +45,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(60);
   const [devOtpCode, setDevOtpCode] = useState<string | null>(null);
+  const [devWarning, setDevWarning] = useState<string | null>(null);
 
   // Countdown timer for resend OTP cooldown
   useEffect(() => {
@@ -86,6 +88,7 @@ export default function SignupPage() {
 
     setLoading(true);
     setDevOtpCode(null);
+    setDevWarning(null);
 
     try {
       const res = await fetch('/api/auth/send-otp', {
@@ -109,6 +112,9 @@ export default function SignupPage() {
       toast.success(data.message || 'ভেরিফিকেশন কোড পাঠানো হয়েছে');
       if (data.devOtp) {
         setDevOtpCode(data.devOtp);
+      }
+      if (data.warning) {
+        setDevWarning(data.warning);
       }
       setStep('OTP');
       setResendCooldown(60);
@@ -158,7 +164,12 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 relative overflow-hidden py-10">
+    <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 relative overflow-hidden py-10 transition-colors duration-200">
+      {/* Dark/Light Mode Switcher */}
+      <div className="absolute top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
+
       {/* Background ambient lighting */}
       <div className="absolute -top-40 -left-40 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -362,12 +373,13 @@ export default function SignupPage() {
                   <div className="rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 p-3 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
                     <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-semibold">ডেভেলপমেন্ট মোড ওটিপি:</p>
+                      <p className="font-semibold">টেস্ট ওটিপি কোড (Test Mode):</p>
                       <p className="font-mono text-base font-bold tracking-widest text-amber-900 dark:text-amber-200">
                         {devOtpCode}
                       </p>
                       <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80 mt-1">
-                        (আপনার .env ফাইলে RESEND_API_KEY কনফিগার করলে ওটিপি সরাসরি গ্রাহকের ইমেইলে যাবে)
+                        {devWarning ||
+                          '(আপনার .env ফাইলে RESEND_API_KEY কনফিগার করলে ওটিপি সরাসরি গ্রাহকের ইমেইলে যাবে)'}
                       </p>
                     </div>
                   </div>
