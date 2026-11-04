@@ -158,7 +158,7 @@ export default async function ProjectsPage({
       )}
 
       {/* Monthly Revenue Goal Progress Banner */}
-      {!isArchived && <MonthlyGoalBanner />}
+      {!isArchived && <MonthlyGoalBanner userId={selectedUserId} />}
 
       {/* Mini KPI summary */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">

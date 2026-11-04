@@ -34,6 +34,9 @@ export async function GET(request: Request) {
         where: {
           userId: user.id,
           status: 'COMPLETED',
+          project: {
+            isDeleted: false,
+          },
         },
         orderBy: { paymentDate: 'desc' },
       }),

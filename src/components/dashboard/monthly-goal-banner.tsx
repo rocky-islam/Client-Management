@@ -43,6 +43,7 @@ interface GoalData {
   deliveredValue: number;
   bookedValue: number;
   receivedRevenue: number;
+  wipValue?: number;
   remaining: number;
   percentage: number;
   hasCustomTarget: boolean;
@@ -54,10 +55,12 @@ interface GoalData {
 export function MonthlyGoalBanner({
   year,
   month,
+  userId,
   onTargetUpdated,
 }: {
   year?: number;
   month?: number;
+  userId?: string;
   onTargetUpdated?: () => void;
 }) {
   const [scope, setScope] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
@@ -73,6 +76,7 @@ export function MonthlyGoalBanner({
       const q = new URLSearchParams();
       if (year) q.set('year', year.toString());
       if (month) q.set('month', month.toString());
+      if (userId && userId !== 'ALL') q.set('userId', userId);
       q.set('scope', targetScope);
 
       const res = await fetch(`/api/targets/current-month?${q.toString()}`);
@@ -90,7 +94,7 @@ export function MonthlyGoalBanner({
 
   useEffect(() => {
     fetchGoal(scope);
-  }, [year, month, scope]);
+  }, [year, month, userId, scope]);
 
   const handleSaveTarget = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -300,8 +304,16 @@ export function MonthlyGoalBanner({
           </div>
 
           {/* Bottom Responsive Metrics Strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1 text-xs">
-            {/* 1. Earned / Delivered */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-1 text-xs">
+            {/* 1. Total WIP Value (Active in progress pipeline) */}
+            <div className="rounded-xl bg-card/60 border border-border/50 p-2.5">
+              <p className="text-[10px] font-medium text-muted-foreground">Total WIP Value</p>
+              <p className="text-sm sm:text-base font-bold text-amber-600 dark:text-amber-400 mt-0.5">
+                {formatCurrency(goal.wipValue || 0, goal.currency)}
+              </p>
+            </div>
+
+            {/* 2. Earned / Delivered */}
             <div className="rounded-xl bg-card/60 border border-border/50 p-2.5">
               <p className="text-[10px] font-medium text-muted-foreground">Achieved / Delivered</p>
               <p className="text-sm sm:text-base font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
@@ -309,7 +321,7 @@ export function MonthlyGoalBanner({
               </p>
             </div>
 
-            {/* 2. Target Goal */}
+            {/* 3. Target Goal */}
             <div className="rounded-xl bg-card/60 border border-border/50 p-2.5">
               <p className="text-[10px] font-medium text-muted-foreground">Target Goal</p>
               <p className="text-sm sm:text-base font-bold text-foreground mt-0.5">
@@ -317,7 +329,7 @@ export function MonthlyGoalBanner({
               </p>
             </div>
 
-            {/* 3. Remaining */}
+            {/* 4. Remaining */}
             <div className="rounded-xl bg-card/60 border border-border/50 p-2.5">
               <p className="text-[10px] font-medium text-muted-foreground">
                 {goal.remaining === 0 ? 'Surplus Earned' : 'Remaining to Goal'}
@@ -335,8 +347,8 @@ export function MonthlyGoalBanner({
               </p>
             </div>
 
-            {/* 4. Days Left */}
-            <div className="rounded-xl bg-card/60 border border-border/50 p-2.5">
+            {/* 5. Days Left */}
+            <div className="rounded-xl bg-card/60 border border-border/50 p-2.5 col-span-2 sm:col-span-1">
               <p className="text-[10px] font-medium text-muted-foreground">
                 {scope === 'quarterly' ? 'Quarter Time Left' : scope === 'yearly' ? 'Year Time Left' : 'Time in Month'}
               </p>

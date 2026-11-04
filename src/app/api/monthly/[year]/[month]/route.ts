@@ -49,6 +49,9 @@ export async function GET(
         where: {
           userId: user.id,
           status: 'COMPLETED',
+          project: {
+            isDeleted: false,
+          },
           paymentDate: {
             gte: startOfMonth,
             lte: endOfMonth,

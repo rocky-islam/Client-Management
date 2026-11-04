@@ -15,7 +15,10 @@ export async function GET(request: Request) {
     const year = searchParams.get('year') ? parseInt(searchParams.get('year')!) : undefined;
     const month = searchParams.get('month') ? parseInt(searchParams.get('month')!) : undefined;
 
-    const where: any = { userId: user.id };
+    const where: any = {
+      userId: user.id,
+      project: { isDeleted: false },
+    };
 
     if (projectId) where.projectId = projectId;
     if (clientId) where.clientId = clientId;

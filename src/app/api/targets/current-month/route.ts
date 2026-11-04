@@ -12,6 +12,10 @@ export async function GET(request: Request) {
     const user = await requireAuth();
     const { searchParams } = new URL(request.url);
 
+    const isMasterOrAdmin = user.role === 'MASTER' || user.role === 'ADMIN';
+    const filterUserId = searchParams.get('userId');
+    const targetUserId = isMasterOrAdmin && filterUserId && filterUserId !== 'ALL' ? filterUserId : user.id;
+
     const now = new Date();
     const year = searchParams.get('year') ? parseInt(searchParams.get('year')!) : now.getFullYear();
     const currentMonthNum = now.getMonth() + 1;
@@ -44,7 +48,7 @@ export async function GET(request: Request) {
       // Look for custom QUARTERLY_REVENUE target
       targetRecord = await prisma.target.findFirst({
         where: {
-          userId: user.id,
+          userId: targetUserId,
           year,
           month: quarter,
           targetType: 'QUARTERLY_REVENUE',
@@ -55,7 +59,7 @@ export async function GET(request: Request) {
       if (!targetRecord) {
         const monthTargets = await prisma.target.findMany({
           where: {
-            userId: user.id,
+            userId: targetUserId,
             year,
             month: { in: [qStartMonthIndex + 1, qStartMonthIndex + 2, qStartMonthIndex + 3] },
             targetType: 'MONTHLY_REVENUE',
@@ -82,7 +86,7 @@ export async function GET(request: Request) {
       // Look for custom YEARLY_REVENUE target
       targetRecord = await prisma.target.findFirst({
         where: {
-          userId: user.id,
+          userId: targetUserId,
           year,
           month: 0,
           targetType: 'YEARLY_REVENUE',
@@ -93,7 +97,7 @@ export async function GET(request: Request) {
       if (!targetRecord) {
         const allMonthTargets = await prisma.target.findMany({
           where: {
-            userId: user.id,
+            userId: targetUserId,
             year,
             targetType: 'MONTHLY_REVENUE',
           },
@@ -120,7 +124,7 @@ export async function GET(request: Request) {
 
       targetRecord = await prisma.target.findFirst({
         where: {
-          userId: user.id,
+          userId: targetUserId,
           year,
           month,
           targetType: 'MONTHLY_REVENUE',
@@ -130,12 +134,16 @@ export async function GET(request: Request) {
 
     const daysLeft = Math.max(0, differenceInCalendarDays(endDate, today));
 
-    // Fetch Payments and Delivered projects in this date range
-    const [payments, deliveredProjects, bookedProjects] = await Promise.all([
+    // Fetch Payments and Delivered projects in this date range, plus live WIP projects
+    const [payments, deliveredProjects, bookedProjects, wipProjects] = await Promise.all([
       prisma.payment.findMany({
         where: {
-          userId: user.id,
+          userId: targetUserId,
           status: 'COMPLETED',
+          project: {
+            isDeleted: false,
+            isArchived: false,
+          },
           paymentDate: {
             gte: startDate,
             lte: endDate,
@@ -145,8 +153,9 @@ export async function GET(request: Request) {
       }),
       prisma.project.findMany({
         where: {
-          userId: user.id,
+          userId: targetUserId,
           isDeleted: false,
+          isArchived: false,
           orderStatus: 'DELIVERED',
           actualDeliveryDate: {
             gte: startDate,
@@ -157,11 +166,23 @@ export async function GET(request: Request) {
       }),
       prisma.project.findMany({
         where: {
-          userId: user.id,
+          userId: targetUserId,
           isDeleted: false,
+          isArchived: false,
           projectDate: {
             gte: startDate,
             lte: endDate,
+          },
+        },
+        select: { value: true },
+      }),
+      prisma.project.findMany({
+        where: {
+          userId: targetUserId,
+          isDeleted: false,
+          isArchived: false,
+          orderStatus: {
+            notIn: ['DELIVERED', 'CANCELLED'],
           },
         },
         select: { value: true },
@@ -172,6 +193,7 @@ export async function GET(request: Request) {
     const receivedRevenue = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
     const deliveredValue = deliveredProjects.reduce((sum, p) => sum + Number(p.value || 0), 0);
     const bookedValue = bookedProjects.reduce((sum, p) => sum + Number(p.value || 0), 0);
+    const wipValue = wipProjects.reduce((sum, p) => sum + Number(p.value || 0), 0);
 
     const achievedAmount = Math.max(receivedRevenue, deliveredValue);
     const targetAmount = targetRecord ? Number(targetRecord.targetAmount) : defaultTarget;
@@ -195,6 +217,7 @@ export async function GET(request: Request) {
       deliveredValue,
       bookedValue,
       receivedRevenue,
+      wipValue,
       remaining,
       percentage: Number(percentage.toFixed(1)),
       hasCustomTarget,
@@ -211,6 +234,9 @@ export async function POST(request: Request) {
   try {
     const user = await requireAuth();
     const body = await request.json();
+
+    const isMasterOrAdmin = user.role === 'MASTER' || user.role === 'ADMIN';
+    const targetUserId = isMasterOrAdmin && body.userId && body.userId !== 'ALL' ? body.userId : user.id;
 
     const now = new Date();
     const year = body.year ? parseInt(body.year) : now.getFullYear();
@@ -246,7 +272,7 @@ export async function POST(request: Request) {
     const target = await prisma.target.upsert({
       where: {
         userId_targetType_year_month_metricType: {
-          userId: user.id,
+          userId: targetUserId,
           targetType,
           year,
           month: monthVal,
@@ -258,7 +284,7 @@ export async function POST(request: Request) {
         currency,
       },
       create: {
-        userId: user.id,
+        userId: targetUserId,
         targetType,
         targetAmount,
         currency,
