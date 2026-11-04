@@ -18,7 +18,7 @@ export async function GET(
       where,
       include: {
         user: {
-          select: { id: true, name: true, email: true, role: true },
+          select: { id: true, name: true, email: true },
         },
         client: true,
         monthlyAssignments: {
