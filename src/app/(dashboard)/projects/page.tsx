@@ -37,13 +37,13 @@ export default async function ProjectsPage({
   }
 
   // If Master, load all users for the Master Workspace filter (sorted with Master at top)
-  const allUsers = isMasterOrAdmin
+  const allUsers: Array<{ id: string; name: string; email: string; role?: string }> = isMasterOrAdmin
     ? (
         await prisma.user.findMany({
           select: { id: true, name: true, email: true, role: true },
           orderBy: { name: 'asc' },
         })
-      ).sort((a, b) => (a.role === 'MASTER' ? -1 : b.role === 'MASTER' ? 1 : a.name.localeCompare(b.name)))
+      ).sort((a: any, b: any) => (a?.role === 'MASTER' ? -1 : b?.role === 'MASTER' ? 1 : String(a?.name || '').localeCompare(String(b?.name || ''))))
     : [];
 
   const projects = await prisma.project.findMany({
