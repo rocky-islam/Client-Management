@@ -82,35 +82,40 @@ export async function POST(request: Request) {
         sendResult.error?.includes('You can only send testing emails to your own email address') ||
         sendResult.error?.includes('verify a domain at resend.com/domains');
 
-      if (isDomainRestricted) {
+      const isDev = process.env.NODE_ENV !== 'production';
+
+      if (isDomainRestricted && isDev) {
         console.warn(
-          `[RESEND RESTRICTION] Recipient ${normalizedEmail} blocked by Resend free tier. Dev simulation enabled. Code: ${otp}`
+          `[RESEND RESTRICTION] Recipient ${normalizedEmail} blocked by Resend onboarding test domain. Dev simulation enabled. Code: ${otp}`
         );
         return NextResponse.json({
           success: true,
-          message: 'Verification code generated (Resend Test Mode).',
+          message: 'Verification code generated (Local Development Mode).',
           devMode: true,
           devOtp: otp,
           warning:
-            'Resend free test domain delivers actual emails only to mdrockyislam.office@gmail.com. For testing with other emails, the OTP is displayed below.',
+            'Resend free test domain delivers actual emails only to mdrockyislam.office@gmail.com. In local dev mode, the OTP is displayed below for quick testing.',
         });
       }
 
       return NextResponse.json(
         {
           error:
-            sendResult.error ||
-            'Failed to send verification email. Please check your Resend configuration.',
+            isDomainRestricted
+              ? 'Email delivery is currently limited to verified domains. Please check your Resend domain settings.'
+              : sendResult.error || 'Failed to send verification email. Please try again.',
         },
-        { status: 500 }
+        { status: 400 }
       );
     }
+
+    const isDev = process.env.NODE_ENV !== 'production';
 
     return NextResponse.json({
       success: true,
       message: `A 6-digit verification code has been sent to ${normalizedEmail}.`,
-      devMode: sendResult.devMode || false,
-      devOtp: sendResult.devMode ? otp : undefined,
+      devMode: isDev && sendResult.devMode ? true : false,
+      devOtp: isDev && sendResult.devMode ? otp : undefined,
     });
   } catch (error: any) {
     console.error('Send OTP error:', error);
