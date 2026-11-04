@@ -19,15 +19,16 @@ export async function POST(request: Request) {
       where: { email: normalizedEmail },
     });
 
-    // Auto-bootstrap initial admin if no user exists at all or email matches INITIAL_ADMIN_EMAIL
+    // Auto-bootstrap initial admin ONLY if database has 0 users (first-time deployment setup)
     if (!user) {
       const userCount = await prisma.user.count();
-      const defaultAdminEmail = (process.env.INITIAL_ADMIN_EMAIL || 'admin@rockybusiness.com').toLowerCase();
       
-      if (userCount === 0 || normalizedEmail === defaultAdminEmail) {
+      if (userCount === 0) {
+        const defaultAdminEmail = (process.env.INITIAL_ADMIN_EMAIL || 'admin@rockybusiness.com').toLowerCase();
         const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'AdminPassword123!';
-        // Allow creating or authenticating initial admin
-        if (password === adminPassword || userCount === 0) {
+        
+        // Allow creating initial admin on empty database
+        if (normalizedEmail === defaultAdminEmail && password === adminPassword) {
           const hashedPassword = await hashPassword(password);
           user = await prisma.user.create({
             data: {
