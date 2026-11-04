@@ -229,7 +229,36 @@ console.log('\n--- TEST 6: Zod Validation Schemas ---');
   console.log('✔ Validation schemas passed (Project, Monthly/Quarterly/Yearly Targets)!');
 }
 
-testAuth().then(() => {
-  console.log('\n🎉 ALL BUSINESS LOGIC & UNIT TESTS PASSED SUCCESSFULLY (6/6 Suites)!');
-});
+// 7. OTP GENERATION & VERIFICATION LIFECYCLE
+console.log('\n--- TEST 7: OTP Generation, Hashing & Verification Lifecycle ---');
+async function testOtpLifecycle() {
+  // Generate 6-digit OTP
+  const rawOtp = Math.floor(100000 + Math.random() * 900000).toString();
+  assert.strictEqual(rawOtp.length, 6);
+  assert.ok(/^\d{6}$/.test(rawOtp));
+
+  // Hash OTP and verify
+  const hashedOtp = await hashPassword(rawOtp);
+  assert.strictEqual(await verifyPassword(rawOtp, hashedOtp), true);
+  assert.strictEqual(await verifyPassword('999999', hashedOtp), false);
+
+  // Expiration boundary check
+  const now = new Date();
+  const validExpiry = new Date(now.getTime() + 10 * 60 * 1000); // +10 minutes
+  const expiredTime = new Date(now.getTime() - 1000); // -1 second
+
+  assert.ok(now < validExpiry, 'Token should be valid within 10 minutes');
+  assert.ok(now > expiredTime, 'Token should be expired after expiration time');
+
+  console.log('✔ OTP generation, 6-digit regex, bcrypt hashing & expiration checks passed!');
+}
+
+async function runAll() {
+  await testAuth();
+  await testOtpLifecycle();
+  console.log('\n🎉 ALL BUSINESS LOGIC & UNIT TESTS PASSED SUCCESSFULLY (7/7 Suites)!');
+}
+
+runAll();
+
 

@@ -314,3 +314,14 @@ model ProjectNote {
   @@index([projectId])
 }
 
+model VerificationToken {
+  id        String   @id @default(cuid())
+  email     String
+  otpHash   String
+  payload   String   @default("{}") // JSON string of signup payload
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
