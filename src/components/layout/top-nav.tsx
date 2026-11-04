@@ -16,10 +16,13 @@ import {
   Users,
   CreditCard,
   Settings,
+  Crown,
+  ShieldCheck,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +36,7 @@ interface TopNavProps {
   user: {
     name?: string | null;
     email?: string | null;
+    role?: string | null;
     businessName?: string | null;
   } | null;
   setMobileOpen: (open: boolean) => void;
@@ -182,17 +186,33 @@ export function TopNav({ user, setMobileOpen }: TopNavProps) {
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-xs border border-primary/20">
                 {user?.name ? user.name.charAt(0).toUpperCase() : 'R'}
               </div>
-              <span className="hidden md:inline-block text-xs font-medium text-foreground max-w-[100px] truncate">
-                {user?.name || 'Rocky'}
-              </span>
+              <div className="hidden md:flex items-center gap-1.5 text-xs font-medium text-foreground max-w-[140px] truncate">
+                <span>{user?.name || 'Rocky'}</span>
+                {user?.role === 'MASTER' ? (
+                  <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] px-1.5 py-0 font-extrabold h-4">
+                    MASTER
+                  </Badge>
+                ) : user?.role === 'ADMIN' ? (
+                  <Badge className="bg-primary text-white text-[9px] px-1.5 py-0 font-bold h-4">
+                    ADMIN
+                  </Badge>
+                ) : null}
+              </div>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{user?.name || 'Rocky Freelancer'}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold leading-none">{user?.name || 'User'}</p>
+                  {user?.role === 'MASTER' && (
+                    <span className="text-[10px] font-bold text-amber-500 flex items-center gap-0.5">
+                      <Crown className="h-3 w-3" /> Master
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs leading-none text-muted-foreground truncate">
-                  {user?.email || 'admin@rockybusiness.com'}
+                  {user?.email}
                 </p>
                 {user?.businessName && (
                   <p className="text-[11px] text-primary font-medium pt-1">
@@ -202,6 +222,14 @@ export function TopNav({ user, setMobileOpen }: TopNavProps) {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            {(user?.role === 'MASTER' || user?.role === 'ADMIN') && (
+              <DropdownMenuItem asChild>
+                <Link href="/users" className="flex items-center gap-2 cursor-pointer font-semibold text-amber-600 dark:text-amber-400">
+                  <ShieldCheck className="h-4 w-4" />
+                  <span>User Management</span>
+                </Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem asChild>
               <Link href="/settings" className="flex items-center gap-2 cursor-pointer">
                 <Settings className="h-4 w-4" />

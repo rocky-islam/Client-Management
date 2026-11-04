@@ -35,6 +35,8 @@ export async function POST(request: Request) {
               email: normalizedEmail,
               passwordHash: hashedPassword,
               name: process.env.INITIAL_ADMIN_NAME || 'Rocky Freelancer',
+              role: 'MASTER',
+              status: 'ACTIVE',
               businessName: 'Rocky Freelance Studio',
               defaultCurrency: 'USD',
               baseCurrency: 'USD',
@@ -49,12 +51,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
+    if (user.status === 'SUSPENDED') {
+      return NextResponse.json(
+        { error: 'Your account has been suspended by the Master Administrator. Please contact support.' },
+        { status: 403 }
+      );
+    }
+
     const isValid = await verifyPassword(password, user.passwordHash);
     if (!isValid) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
-    const token = await createSessionToken(user.id, user.email);
+    const token = await createSessionToken(user.id, user.email, user.role);
     await setSessionCookie(token);
 
     await logActivity({
@@ -62,7 +71,7 @@ export async function POST(request: Request) {
       actionType: 'LOGIN',
       entityType: 'AUTH',
       entityId: user.id,
-      description: `User ${user.email} logged in successfully`,
+      description: `User ${user.email} (${user.role}) logged in successfully`,
     });
 
     return NextResponse.json({
@@ -71,6 +80,8 @@ export async function POST(request: Request) {
         id: user.id,
         email: user.email,
         name: user.name,
+        role: user.role,
+        phone: user.phone,
         businessName: user.businessName,
       },
     });
@@ -82,4 +93,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

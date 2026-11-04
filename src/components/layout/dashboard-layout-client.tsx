@@ -10,6 +10,7 @@ interface DashboardLayoutClientProps {
   user: {
     name?: string | null;
     email?: string | null;
+    role?: string | null;
     businessName?: string | null;
   } | null;
 }
@@ -26,6 +27,7 @@ export function DashboardLayoutClient({ children, user }: DashboardLayoutClientP
         setCollapsed={setCollapsed}
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}
+        user={user}
       />
 
       {/* Main Container */}

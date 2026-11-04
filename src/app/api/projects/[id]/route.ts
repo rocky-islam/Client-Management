@@ -10,12 +10,16 @@ export async function GET(
 ) {
   try {
     const user = await requireAuth();
+    const isMasterOrAdmin = user.role === 'MASTER' || user.role === 'ADMIN';
+    const where: any = { id: params.id };
+    if (!isMasterOrAdmin) where.userId = user.id;
+
     const project = await prisma.project.findFirst({
-      where: {
-        id: params.id,
-        userId: user.id,
-      },
+      where,
       include: {
+        user: {
+          select: { id: true, name: true, email: true, role: true },
+        },
         client: true,
         monthlyAssignments: {
           orderBy: [{ year: 'asc' }, { month: 'asc' }],
@@ -49,10 +53,11 @@ export async function PUT(
 ) {
   try {
     const user = await requireAuth();
+    const isMasterOrAdmin = user.role === 'MASTER' || user.role === 'ADMIN';
     const body = await request.json();
 
     const existingProject = await prisma.project.findFirst({
-      where: { id: params.id, userId: user.id },
+      where: isMasterOrAdmin ? { id: params.id } : { id: params.id, userId: user.id },
     });
 
     if (!existingProject) {
@@ -151,10 +156,11 @@ export async function PATCH(
 ) {
   try {
     const user = await requireAuth();
+    const isMasterOrAdmin = user.role === 'MASTER' || user.role === 'ADMIN';
     const body = await request.json();
 
     const existingProject = await prisma.project.findFirst({
-      where: { id: params.id, userId: user.id },
+      where: isMasterOrAdmin ? { id: params.id } : { id: params.id, userId: user.id },
     });
 
     if (!existingProject) {
@@ -231,8 +237,9 @@ export async function DELETE(
 ) {
   try {
     const user = await requireAuth();
+    const isMasterOrAdmin = user.role === 'MASTER' || user.role === 'ADMIN';
     const existing = await prisma.project.findFirst({
-      where: { id: params.id, userId: user.id },
+      where: isMasterOrAdmin ? { id: params.id } : { id: params.id, userId: user.id },
     });
 
     if (!existing) {

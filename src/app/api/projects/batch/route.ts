@@ -21,12 +21,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Action is required' }, { status: 400 });
     }
 
-    // Verify ownership of the projects
+    // Verify ownership of the projects (Master can manage all)
+    const isMasterOrAdmin = user.role === 'MASTER' || user.role === 'ADMIN';
+    const ownershipWhere: any = { id: { in: ids } };
+    if (!isMasterOrAdmin) {
+      ownershipWhere.userId = user.id;
+    }
+
     const existingProjects = await prisma.project.findMany({
-      where: {
-        id: { in: ids },
-        userId: user.id,
-      },
+      where: ownershipWhere,
       select: {
         id: true,
         name: true,
@@ -59,7 +62,6 @@ export async function POST(request: Request) {
       await prisma.project.updateMany({
         where: {
           id: { in: validIds },
-          userId: user.id,
         },
         data: updateData,
       });
@@ -69,7 +71,6 @@ export async function POST(request: Request) {
         await prisma.project.updateMany({
           where: {
             id: { in: validIds },
-            userId: user.id,
             deliveryStatementDate: null,
           },
           data: {
@@ -134,7 +135,6 @@ export async function POST(request: Request) {
       await prisma.project.updateMany({
         where: {
           id: { in: validIds },
-          userId: user.id,
         },
         data: {
           deadline: new Date(newDeadline),
@@ -161,7 +161,6 @@ export async function POST(request: Request) {
       await prisma.project.updateMany({
         where: {
           id: { in: validIds },
-          userId: user.id,
         },
         data: {
           isDeleted: true,

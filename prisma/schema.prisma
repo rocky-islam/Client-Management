@@ -13,6 +13,9 @@ model User {
   email           String         @unique
   passwordHash    String
   name            String
+  phone           String?
+  role            String         @default("USER") // MASTER, ADMIN, USER
+  status          String         @default("ACTIVE") // ACTIVE, SUSPENDED
   businessName    String         @default("Rocky Freelance Studio")
   avatarUrl       String?
   defaultCurrency String         @default("USD")

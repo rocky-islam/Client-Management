@@ -20,12 +20,25 @@ export async function GET(request: Request) {
     const deleted = searchParams.get('deleted') === 'true';
     const year = searchParams.get('year') ? parseInt(searchParams.get('year')!) : undefined;
     const month = searchParams.get('month') ? parseInt(searchParams.get('month')!) : undefined;
+    const userFilter = searchParams.get('userId');
+
+    const isMasterOrAdmin = user.role === 'MASTER' || user.role === 'ADMIN';
 
     const where: any = {
-      userId: user.id,
       isArchived: archived,
       isDeleted: deleted,
     };
+
+    // Role-based data isolation vs Master oversight:
+    if (isMasterOrAdmin) {
+      if (userFilter && userFilter !== 'ALL') {
+        where.userId = userFilter;
+      }
+      // If userFilter is 'ALL' or not provided for Master, Master sees all projects!
+    } else {
+      // Normal users strictly see only their own projects
+      where.userId = user.id;
+    }
 
     if (status && status !== 'ALL') {
       where.orderStatus = status;
@@ -67,6 +80,9 @@ export async function GET(request: Request) {
     const projects = await prisma.project.findMany({
       where,
       include: {
+        user: {
+          select: { id: true, name: true, email: true, role: true },
+        },
         client: {
           select: { id: true, name: true, companyName: true, email: true },
         },

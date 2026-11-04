@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, Suspense } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Lock, Mail, ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
+import { Lock, Mail, ArrowRight, Loader2, UserPlus, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,14 +15,14 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
 
-  const [email, setEmail] = useState('admin@rockybusiness.com');
-  const [password, setPassword] = useState('AdminPassword123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      toast.error('Please fill in both email and password');
+      toast.error('Please enter both your email address and password');
       return;
     }
 
@@ -30,7 +31,7 @@ function LoginForm() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
 
       const data = await res.json();
@@ -38,11 +39,11 @@ function LoginForm() {
         throw new Error(data.error || 'Login failed');
       }
 
-      toast.success('Welcome back, ' + (data.user.name || 'Rocky') + '!');
+      toast.success('Welcome back, ' + (data.user.name || 'User') + '!');
       router.push(callbackUrl);
       router.refresh();
     } catch (err: any) {
-      toast.error(err.message || 'An error occurred during login');
+      toast.error(err.message || 'Invalid email or password');
     } finally {
       setLoading(false);
     }
@@ -58,7 +59,7 @@ function LoginForm() {
           Rocky Business Manager
         </CardTitle>
         <CardDescription className="text-xs text-muted-foreground">
-          Freelance Operations, Monthly Project Planning & Revenue Intelligence
+          Sign in to access your project dashboard, revenue tracking, and analytics
         </CardDescription>
       </CardHeader>
 
@@ -74,7 +75,7 @@ function LoginForm() {
                 id="email"
                 type="email"
                 required
-                placeholder="admin@rockybusiness.com"
+                placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="pl-9 text-sm h-10"
@@ -87,7 +88,6 @@ function LoginForm() {
               <Label htmlFor="password" className="text-xs font-semibold">
                 Password
               </Label>
-              <span className="text-[11px] text-muted-foreground">Default: AdminPassword123!</span>
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -95,31 +95,20 @@ function LoginForm() {
                 id="password"
                 type="password"
                 required
-                placeholder="••••••••••••"
+                placeholder="Enter your account password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="pl-9 text-sm h-10"
               />
             </div>
           </div>
-
-          {/* Quick Demo Credentials Box */}
-          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-slate-700 dark:text-slate-300 space-y-1">
-            <div className="font-semibold text-primary flex items-center gap-1.5">
-              <ShieldCheck className="h-4 w-4" /> Single-Admin Credentials
-            </div>
-            <div className="text-[11px] text-muted-foreground">
-              Email: <span className="font-mono text-foreground">admin@rockybusiness.com</span><br/>
-              Password: <span className="font-mono text-foreground">AdminPassword123!</span>
-            </div>
-          </div>
         </CardContent>
 
-        <CardFooter className="pt-2">
+        <CardFooter className="flex-col gap-3 pt-2">
           <Button
             type="submit"
             disabled={loading}
-            className="w-full h-10 font-medium shadow-md gap-2"
+            className="w-full h-10 font-semibold shadow-md gap-2"
           >
             {loading ? (
               <>
@@ -133,6 +122,17 @@ function LoginForm() {
               </>
             )}
           </Button>
+
+          <div className="text-center text-xs text-muted-foreground pt-1">
+            Don&apos;t have an account?{' '}
+            <Link
+              href="/signup"
+              className="font-semibold text-primary hover:underline inline-flex items-center gap-1"
+            >
+              <UserPlus className="h-3 w-3" />
+              <span>Create an Account</span>
+            </Link>
+          </div>
         </CardFooter>
       </form>
     </Card>

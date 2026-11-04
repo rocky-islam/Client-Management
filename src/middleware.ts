@@ -27,6 +27,7 @@ const protectedRoutes = [
   '/activity',
   '/backup',
   '/settings',
+  '/users',
 ];
 
 export async function middleware(request: NextRequest) {
@@ -34,22 +35,30 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get(COOKIE_NAME)?.value;
 
   let isAuthenticated = false;
+  let userRole = 'USER';
+
   if (token) {
     try {
-      await jwtVerify(token, SECRET_KEY);
+      const { payload } = await jwtVerify(token, SECRET_KEY);
       isAuthenticated = true;
+      userRole = (payload.role as string) || 'USER';
     } catch {
       isAuthenticated = false;
     }
   }
 
-  const isProtected = protectedRoutes.some(route => pathname.startsWith(route));
-  const isAuthPage = pathname.startsWith('/login');
+  const isProtected = protectedRoutes.some((route) => pathname.startsWith(route));
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup');
 
   if (isProtected && !isAuthenticated) {
     const url = new URL('/login', request.url);
     url.searchParams.set('callbackUrl', encodeURI(pathname));
     return NextResponse.redirect(url);
+  }
+
+  // Master-only protected routes
+  if (pathname.startsWith('/users') && userRole !== 'MASTER' && userRole !== 'ADMIN') {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   if (isAuthPage && isAuthenticated) {
@@ -76,4 +85,3 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|images|api/auth).*)',
   ],
 };
-

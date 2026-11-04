@@ -21,20 +21,21 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash);
 }
 
-export async function createSessionToken(userId: string, email: string): Promise<string> {
-  return new SignJWT({ userId, email })
+export async function createSessionToken(userId: string, email: string, role: string = 'USER'): Promise<string> {
+  return new SignJWT({ userId, email, role })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('30d')
     .sign(SECRET_KEY);
 }
 
-export async function verifySessionToken(token: string): Promise<{ userId: string; email: string } | null> {
+export async function verifySessionToken(token: string): Promise<{ userId: string; email: string; role?: string } | null> {
   try {
     const { payload } = await jwtVerify(token, SECRET_KEY);
     return {
       userId: payload.userId as string,
       email: payload.email as string,
+      role: (payload.role as string) || 'USER',
     };
   } catch (error) {
     return null;
@@ -73,6 +74,9 @@ export const getCurrentUser = cacheFn(async () => {
         id: true,
         email: true,
         name: true,
+        phone: true,
+        role: true,
+        status: true,
         businessName: true,
         avatarUrl: true,
         defaultCurrency: true,
@@ -82,6 +86,11 @@ export const getCurrentUser = cacheFn(async () => {
         createdAt: true,
       },
     });
+
+    if (!user || user.status === 'SUSPENDED') {
+      return null;
+    }
+
     return user;
   } catch (error) {
     console.error('Error fetching current user:', error);
@@ -97,3 +106,10 @@ export async function requireAuth() {
   return user;
 }
 
+export async function requireMaster() {
+  const user = await requireAuth();
+  if (user.role !== 'MASTER' && user.role !== 'ADMIN') {
+    throw new Error('Forbidden: Master privileges required');
+  }
+  return user;
+}

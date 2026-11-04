@@ -1,7 +1,7 @@
 import assert from 'assert';
 import { calculateTimeLeft, calculateOutstandingAmount, calculateAchievement, isOverdue } from '../src/lib/calculations';
 import { projectSchema, targetSchema } from '../src/lib/validations';
-import { hashPassword, verifyPassword } from '../src/lib/auth';
+import { hashPassword, verifyPassword, createSessionToken, verifySessionToken } from '../src/lib/auth';
 
 console.log('🧪 Starting Rocky Business Manager Unit & Business Logic Test Suite...\n');
 
@@ -113,7 +113,19 @@ async function testAuth() {
   assert.strictEqual(await verifyPassword(plain, hash), true);
   assert.strictEqual(await verifyPassword('WrongPassword', hash), false);
 
-  console.log('✔ Password hashing & bcrypt verification passed!');
+  // JWT with Role verification (MASTER, USER)
+  const masterToken = await createSessionToken('user-1', 'rocky@admin.com', 'MASTER');
+  const masterSession = await verifySessionToken(masterToken);
+  assert.strictEqual(masterSession?.userId, 'user-1');
+  assert.strictEqual(masterSession?.email, 'rocky@admin.com');
+  assert.strictEqual(masterSession?.role, 'MASTER');
+
+  const userToken = await createSessionToken('user-2', 'user@example.com', 'USER');
+  const userSession = await verifySessionToken(userToken);
+  assert.strictEqual(userSession?.userId, 'user-2');
+  assert.strictEqual(userSession?.role, 'USER');
+
+  console.log('✔ Password hashing, bcrypt & JWT Role verification passed!');
 }
 
 // 5. CARRY FORWARD INVARIANT SIMULATION

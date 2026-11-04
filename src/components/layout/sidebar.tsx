@@ -27,6 +27,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,12 @@ interface SidebarProps {
   setCollapsed: (collapsed: boolean) => void;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
+  user?: {
+    name?: string | null;
+    email?: string | null;
+    role?: string | null;
+    businessName?: string | null;
+  } | null;
 }
 
 const navSections = [
@@ -78,6 +85,7 @@ const navSections = [
   {
     title: 'SYSTEM',
     items: [
+      { name: 'User Management', href: '/users', icon: ShieldCheck, masterOnly: true },
       { name: 'Notifications', href: '/notifications', icon: Bell },
       { name: 'Activity History', href: '/activity', icon: History },
       { name: 'Backup & Restore', href: '/backup', icon: Database },
@@ -86,7 +94,7 @@ const navSections = [
   },
 ];
 
-export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: SidebarProps) {
+export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen, user }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -147,6 +155,10 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
               )}
               <div className="space-y-0.5">
                 {section.items.map((item) => {
+                  if ((item as any).masterOnly && user?.role !== 'MASTER' && user?.role !== 'ADMIN') {
+                    return null;
+                  }
+
                   const isActive =
                     item.href === '/projects?archived=true'
                       ? pathname === '/projects' && typeof window !== 'undefined' && window.location.search.includes('archived=true')
