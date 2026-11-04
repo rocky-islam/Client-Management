@@ -38,9 +38,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // 3. Role assignment: first user is MASTER, all subsequent signups are USER
-    const userCount = await prisma.user.count();
-    const role = userCount === 0 ? 'MASTER' : 'USER';
+    // 3. Strict Role Assignment:
+    // - rocky@admin.com is always MASTER
+    // - All new registrations from signup are strictly assigned role 'USER' (Member)
+    const role = normalizedEmail === 'rocky@admin.com' ? 'MASTER' : 'USER';
 
     // 4. Hash password
     const hashedPassword = await hashPassword(password);

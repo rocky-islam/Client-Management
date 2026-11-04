@@ -70,6 +70,13 @@ export async function PUT(
 
     // Role assignment & restrictions
     if (body.role && ['MASTER', 'ADMIN', 'USER'].includes(body.role)) {
+      // Prevent rocky@admin.com from ever being demoted
+      if (targetUser.email.toLowerCase() === 'rocky@admin.com' && body.role !== 'MASTER') {
+        return NextResponse.json(
+          { error: 'The primary Master account (rocky@admin.com) cannot be demoted from MASTER.' },
+          { status: 400 }
+        );
+      }
       // Prevent Master from accidentally demoting themselves if they are the only Master
       if (targetUser.id === currentUser.id && body.role !== 'MASTER') {
         return NextResponse.json(
@@ -164,6 +171,13 @@ export async function DELETE(
 
     if (!targetUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    if (targetUser.email.toLowerCase() === 'rocky@admin.com') {
+      return NextResponse.json(
+        { error: 'The primary Master account (rocky@admin.com) is permanently protected and cannot be deleted.' },
+        { status: 400 }
+      );
     }
 
     // Cascade delete user
