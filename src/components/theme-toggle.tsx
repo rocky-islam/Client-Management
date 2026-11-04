@@ -27,7 +27,7 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
       size="icon"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
       className={`h-9 w-9 rounded-xl border border-border/60 bg-background/80 backdrop-blur-sm text-foreground shadow-sm hover:bg-accent transition-all duration-200 ${className}`}
-      title={isDark ? 'লাইট মোডে পরিবর্তন করুন' : 'ডার্ক মোডে পরিবর্তন করুন'}
+      title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
     >
       {isDark ? (
         <Sun className="h-4 w-4 text-amber-400 transition-transform rotate-0 hover:rotate-45" />

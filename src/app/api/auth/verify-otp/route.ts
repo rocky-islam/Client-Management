@@ -11,14 +11,14 @@ export async function POST(request: Request) {
 
     if (!email || !email.includes('@')) {
       return NextResponse.json(
-        { error: 'সঠিক ইমেইল ঠিকানা প্রয়োজন' },
+        { error: 'A valid email address is required' },
         { status: 400 }
       );
     }
 
     if (!otp || String(otp).trim().length !== 6) {
       return NextResponse.json(
-        { error: 'দয়া করে ৬-ডিজিটের ভেরিফিকেশন কোড লিখুন' },
+        { error: 'Please enter the 6-digit verification code' },
         { status: 400 }
       );
     }
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
     if (!tokenRecord) {
       return NextResponse.json(
-        { error: 'কোনো ভেরিফিকেশন কোড পাওয়া যায়নি। অনুগ্রহ করে পুনরায় কোড পাঠান।' },
+        { error: 'No pending verification found. Please sign up or request a new code.' },
         { status: 400 }
       );
     }
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
         where: { email: normalizedEmail },
       });
       return NextResponse.json(
-        { error: 'ভেরিফিকেশন কোডের মেয়াদ শেষ হয়ে গেছে (১০ মিনিট)। দয়া করে নতুন কোড নিন।' },
+        { error: 'Verification code has expired (10 minutes). Please request a new code.' },
         { status: 400 }
       );
     }
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     const isOtpValid = await verifyPassword(cleanOtp, tokenRecord.otpHash);
     if (!isOtpValid) {
       return NextResponse.json(
-        { error: 'ভুল ওটিপি কোড! অনুগ্রহ করে সঠিক কোড দিন।' },
+        { error: 'Invalid verification code! Please check the code and try again.' },
         { status: 400 }
       );
     }
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
         where: { email: normalizedEmail },
       });
       return NextResponse.json(
-        { error: 'এই ইমেইল দিয়ে ইতিমধ্যে অ্যাকাউন্ট সক্রিয় আছে। সরাসরি লগইন করুন।' },
+        { error: 'An account with this email address already exists. Please sign in.' },
         { status: 400 }
       );
     }
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       payload = JSON.parse(tokenRecord.payload);
     } catch {
       return NextResponse.json(
-        { error: 'রেজিস্ট্রেশন ডেটায় ত্রুটি হয়েছে। পুনরায় চেষ্টা করুন।' },
+        { error: 'Invalid registration payload. Please submit the form again.' },
         { status: 400 }
       );
     }
@@ -146,7 +146,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'অভিনন্দন! আপনার অ্যাকাউন্ট সফলভাবে ভেরিফাই ও তৈরি হয়েছে।',
+      message: 'Account successfully verified and created!',
       user: {
         id: newUser.id,
         name: newUser.name,
@@ -159,9 +159,8 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error('Verify OTP error:', error);
     return NextResponse.json(
-      { error: error?.message || 'ভেরিফিকেশন সম্পন্ন করতে সমস্যা হয়েছে।' },
+      { error: error?.message || 'Failed to complete verification. Please try again.' },
       { status: 500 }
     );
   }
 }
-

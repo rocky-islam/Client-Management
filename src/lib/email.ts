@@ -27,15 +27,15 @@ export async function sendOtpEmail({ to, otp, name }: SendOtpParams): Promise<{
     };
   }
 
-  const displayName = name ? name.trim() : 'সম্মানিত ব্যবহারকারী';
+  const displayName = name ? name.trim() : 'Valued User';
 
   const htmlContent = `
     <!DOCTYPE html>
-    <html lang="bn">
+    <html lang="en">
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>ইমেইল ভেরিফিকেশন কোড</title>
+      <title>Email Verification Code</title>
       <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px; color: #1e293b; }
         .container { max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
@@ -56,25 +56,25 @@ export async function sendOtpEmail({ to, otp, name }: SendOtpParams): Promise<{
       <div class="container">
         <div class="header">
           <span class="badge">Rocky Business Manager</span>
-          <h1>ইমেইল ভেরিফিকেশন কোড</h1>
-          <p>আপনার অ্যাকাউন্ট সুরক্ষিত রাখতে এই কোডটি ব্যবহার করুন</p>
+          <h1>Email Verification Code</h1>
+          <p>Use this security code to complete your registration</p>
         </div>
         <div class="content">
-          <div class="greeting">আসসালামু আলাইকুম, ${displayName}!</div>
+          <div class="greeting">Hello, ${displayName}!</div>
           <div class="message">
-            Rocky Business Manager প্ল্যাটফর্মে সাইন-আপ করার জন্য ধন্যবাদ। আপনার রেজিস্ট্রেশন সম্পন্ন করতে নিচের ৬-ডিজিটের ওটিপি (OTP) কোডটি প্রদান করুন:
+            Thank you for registering on Rocky Business Manager. To verify your email address and activate your account, please enter the following 6-digit verification code:
           </div>
           <div class="otp-box">
             <div class="otp-code">${otp}</div>
-            <div class="expiry">⏰ এই কোডটির মেয়াদ <strong>১০ মিনিট</strong> থাকবে</div>
+            <div class="expiry">⏰ This code will expire in <strong>10 minutes</strong></div>
           </div>
           <div class="message" style="margin-bottom: 0; font-size: 13px; color: #64748b;">
-            আপনি যদি এই অ্যাকাউন্টটি খোলার অনুরোধ না করে থাকেন, তবে নির্দ্বিধায় এই ইমেইলটি উপেক্ষা করতে পারেন।
+            If you did not request this verification code, please ignore this email. Your account will not be created without this code.
           </div>
         </div>
         <div class="footer">
-          &copy; ${new Date().getFullYear()} Rocky Business Manager. সর্বস্বত্ব সংরক্ষিত।<br>
-          একটি নিরাপদ ও স্বয়ংক্রিয় ক্লায়েন্ট ও প্রজেক্ট ম্যানেজমেন্ট সিস্টেম।
+          &copy; ${new Date().getFullYear()} Rocky Business Manager. All rights reserved.<br>
+          Secure Client & Project Management Studio.
         </div>
       </div>
     </body>
@@ -85,7 +85,7 @@ export async function sendOtpEmail({ to, otp, name }: SendOtpParams): Promise<{
     const { data, error } = await resend.emails.send({
       from: fromEmail,
       to: [to],
-      subject: `আপনার ভেরিফিকেশন কোড: ${otp} - Rocky Business Manager`,
+      subject: `Your Verification Code: ${otp} - Rocky Business Manager`,
       html: htmlContent,
     });
 
@@ -99,8 +99,7 @@ export async function sendOtpEmail({ to, otp, name }: SendOtpParams): Promise<{
     console.error('[RESEND EXCEPTION]', err);
     return {
       success: false,
-      error: err.message || 'ইমেইল পাঠাতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।',
+      error: err.message || 'Failed to send verification email. Please try again.',
     };
   }
 }
-

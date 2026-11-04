@@ -67,22 +67,22 @@ export default function SignupPage() {
     if (e) e.preventDefault();
 
     if (!formData.name.trim() || formData.name.trim().length < 2) {
-      toast.error('আপনার পুরো নাম লিখুন (কমপক্ষে ২ অক্ষর)');
+      toast.error('Please enter your full name (at least 2 characters)');
       return;
     }
 
     if (!formData.email.trim() || !formData.email.includes('@')) {
-      toast.error('সঠিক ইমেইল এড্রেস প্রদান করুন');
+      toast.error('Please enter a valid email address');
       return;
     }
 
     if (formData.password.length < 6) {
-      toast.error('পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে');
+      toast.error('Password must be at least 6 characters long');
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      toast.error('পাসওয়ার্ড দুটি মিলছে না!');
+      toast.error('Passwords do not match!');
       return;
     }
 
@@ -106,10 +106,10 @@ export default function SignupPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'ওটিপি পাঠাতে সমস্যা হয়েছে');
+        throw new Error(data.error || 'Failed to send verification code');
       }
 
-      toast.success(data.message || 'ভেরিফিকেশন কোড পাঠানো হয়েছে');
+      toast.success(data.message || 'Verification code sent to your email');
       if (data.devOtp) {
         setDevOtpCode(data.devOtp);
       }
@@ -119,7 +119,7 @@ export default function SignupPage() {
       setStep('OTP');
       setResendCooldown(60);
     } catch (err: any) {
-      toast.error(err.message || 'ওটিপি পাঠানো সম্ভব হয়নি। তথ্যগুলো আবার পরীক্ষা করুন।');
+      toast.error(err.message || 'Unable to send verification code. Please check your details.');
     } finally {
       setLoading(false);
     }
@@ -131,7 +131,7 @@ export default function SignupPage() {
 
     const cleanOtp = otp.trim();
     if (!cleanOtp || cleanOtp.length !== 6) {
-      toast.error('দয়া করে ৬-ডিজিটের ওটিপি কোড দিন');
+      toast.error('Please enter the 6-digit verification code');
       return;
     }
 
@@ -150,14 +150,14 @@ export default function SignupPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'ভেরিফিকেশন ব্যর্থ হয়েছে');
+        throw new Error(data.error || 'Verification failed');
       }
 
-      toast.success('অভিনন্দন! আপনার অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে। স্বাগতম, ' + data.user.name);
+      toast.success('Congratulations! Your account has been created. Welcome, ' + data.user.name);
       router.push('/dashboard');
       router.refresh();
     } catch (err: any) {
-      toast.error(err.message || 'ভুল ওটিপি কোড বা মেয়াদের সমস্যা। আবার চেষ্টা করুন।');
+      toast.error(err.message || 'Invalid verification code or expired. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -183,10 +183,10 @@ export default function SignupPage() {
                 R
               </div>
               <CardTitle className="text-2xl font-bold tracking-tight text-foreground">
-                নতুন অ্যাকাউন্ট তৈরি করুন
+                Create Your Account
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
-                নিবন্ধন করতে আপনার তথ্যগুলো দিন। ইমেইল ভেরিফিকেশনের জন্য বিনামূল্যে একটি OTP পাঠানো হবে।
+                Enter your details to register. A free 6-digit verification code will be sent to your email.
               </CardDescription>
             </CardHeader>
 
@@ -195,7 +195,7 @@ export default function SignupPage() {
                 {/* Full Name */}
                 <div className="space-y-1">
                   <Label htmlFor="name" className="text-xs font-semibold">
-                    পুরো নাম (Full Name) *
+                    Full Name *
                   </Label>
                   <div className="relative">
                     <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -215,7 +215,7 @@ export default function SignupPage() {
                 {/* Email Address */}
                 <div className="space-y-1">
                   <Label htmlFor="email" className="text-xs font-semibold">
-                    ইমেইল ঠিকানা (Email Address) *
+                    Email Address *
                   </Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -236,7 +236,7 @@ export default function SignupPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label htmlFor="phone" className="text-xs font-semibold">
-                      মোবাইল নম্বর (Phone)
+                      Mobile Number
                     </Label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -254,7 +254,7 @@ export default function SignupPage() {
 
                   <div className="space-y-1">
                     <Label htmlFor="businessName" className="text-xs font-semibold">
-                      এজেন্সি / ওয়ার্কস্পেস নাম
+                      Agency / Workspace Name
                     </Label>
                     <div className="relative">
                       <Briefcase className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -275,7 +275,7 @@ export default function SignupPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div className="space-y-1">
                     <Label htmlFor="password" className="text-xs font-semibold">
-                      পাসওয়ার্ড *
+                      Password *
                     </Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -284,7 +284,7 @@ export default function SignupPage() {
                         name="password"
                         type="password"
                         required
-                        placeholder="কমপক্ষে ৬ অক্ষর"
+                        placeholder="Min 6 characters"
                         value={formData.password}
                         onChange={handleChange}
                         className="pl-9 text-sm h-9"
@@ -294,7 +294,7 @@ export default function SignupPage() {
 
                   <div className="space-y-1">
                     <Label htmlFor="confirmPassword" className="text-xs font-semibold">
-                      পাসওয়ার্ড নিশ্চিত করুন *
+                      Confirm Password *
                     </Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -303,7 +303,7 @@ export default function SignupPage() {
                         name="confirmPassword"
                         type="password"
                         required
-                        placeholder="পুনরায় পাসওয়ার্ড দিন"
+                        placeholder="Re-enter your password"
                         value={formData.confirmPassword}
                         onChange={handleChange}
                         className="pl-9 text-sm h-9"
@@ -315,7 +315,7 @@ export default function SignupPage() {
                 <div className="rounded-lg bg-indigo-50/60 dark:bg-indigo-950/20 p-2.5 text-[11px] text-muted-foreground border border-indigo-100 dark:border-indigo-900/40 flex items-start gap-2">
                   <Sparkles className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
                   <span>
-                    অ্যাকাউন্ট ভেরিফিকেশনের জন্য <strong>Resend</strong> এর মাধ্যমে সরাসরি আপনার ইনবক্সে ৬-ডিজিটের ফ্রি সিকিউরিটি ওটিপি পাঠানো হবে।
+                    To ensure secure account access, a free 6-digit verification code will be sent to your email via <strong>Resend</strong>.
                   </span>
                 </div>
               </CardContent>
@@ -329,24 +329,24 @@ export default function SignupPage() {
                   {loading ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>ওটিপি কোড পাঠানো হচ্ছে...</span>
+                      <span>Sending Verification Code...</span>
                     </>
                   ) : (
                     <>
-                      <span>ভেরিফিকেশন কোড পাঠান</span>
+                      <span>Send Verification Code</span>
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}
                 </Button>
 
                 <div className="text-center text-xs text-muted-foreground pt-1">
-                  ইতিমধ্যে একটি অ্যাকাউন্ট আছে?{' '}
+                  Already have an account?{' '}
                   <Link
                     href="/login"
                     className="font-semibold text-primary hover:underline inline-flex items-center gap-1"
                   >
                     <LogIn className="h-3 w-3" />
-                    <span>লগইন করুন</span>
+                    <span>Sign In</span>
                   </Link>
                 </div>
               </CardFooter>
@@ -360,10 +360,10 @@ export default function SignupPage() {
                 <KeyRound className="h-7 w-7" />
               </div>
               <CardTitle className="text-2xl font-bold tracking-tight text-foreground">
-                ইমেইল ওটিপি যাচাই করুন
+                Verify Your Email
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
-                আমরা <strong className="text-foreground">{formData.email}</strong> ঠিকানায় ৬-ডিজিটের একটি গোপন কোড পাঠিয়েছি।
+                We have sent a 6-digit verification code to <strong className="text-foreground">{formData.email}</strong>.
               </CardDescription>
             </CardHeader>
 
@@ -373,13 +373,13 @@ export default function SignupPage() {
                   <div className="rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 p-3 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
                     <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-semibold">টেস্ট ওটিপি কোড (Test Mode):</p>
+                      <p className="font-semibold">Test Mode OTP Code:</p>
                       <p className="font-mono text-base font-bold tracking-widest text-amber-900 dark:text-amber-200">
                         {devOtpCode}
                       </p>
                       <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80 mt-1">
                         {devWarning ||
-                          '(আপনার .env ফাইলে RESEND_API_KEY কনফিগার করলে ওটিপি সরাসরি গ্রাহকের ইমেইলে যাবে)'}
+                          '(Once your domain is verified on Resend, this code will be delivered directly to the user inbox)'}
                       </p>
                     </div>
                   </div>
@@ -387,7 +387,7 @@ export default function SignupPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="otp" className="text-xs font-semibold text-center block">
-                    ৬-ডিজিটের সিকিউরিটি কোড লিখুন
+                    Enter 6-Digit Verification Code
                   </Label>
                   <Input
                     id="otp"
@@ -400,7 +400,7 @@ export default function SignupPage() {
                     className="text-center font-mono text-2xl tracking-[0.5em] h-14 rounded-xl border-2 border-indigo-200 dark:border-indigo-800 focus-visible:ring-indigo-500 font-bold"
                   />
                   <p className="text-[11px] text-center text-muted-foreground">
-                    কোডের মেয়াদ <strong>১০ মিনিট</strong> থাকবে।
+                    This code will expire in <strong>10 minutes</strong>.
                   </p>
                 </div>
 
@@ -411,12 +411,12 @@ export default function SignupPage() {
                     className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 transition-colors"
                   >
                     <ArrowLeft className="h-3.5 w-3.5" />
-                    <span>ইমেইল সংশোধন করুন</span>
+                    <span>Edit Details / Email</span>
                   </button>
 
                   {resendCooldown > 0 ? (
                     <span className="text-muted-foreground font-mono text-[11px]">
-                      পুনরায় কোড: 00:{resendCooldown < 10 ? `0${resendCooldown}` : resendCooldown}
+                      Resend code in: 00:{resendCooldown < 10 ? `0${resendCooldown}` : resendCooldown}
                     </span>
                   ) : (
                     <button
@@ -426,7 +426,7 @@ export default function SignupPage() {
                       className="text-primary hover:underline font-semibold inline-flex items-center gap-1"
                     >
                       <RotateCcw className="h-3 w-3" />
-                      <span>কোড পুনরায় পাঠান</span>
+                      <span>Resend Code</span>
                     </button>
                   )}
                 </div>
@@ -441,24 +441,24 @@ export default function SignupPage() {
                   {loading ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>যাচাই করা হচ্ছে...</span>
+                      <span>Verifying Code...</span>
                     </>
                   ) : (
                     <>
                       <CheckCircle2 className="h-4 w-4" />
-                      <span>যাচাই করে অ্যাকাউন্ট তৈরি করুন</span>
+                      <span>Verify & Complete Registration</span>
                     </>
                   )}
                 </Button>
 
                 <div className="text-center text-xs text-muted-foreground pt-1">
-                  ইতিমধ্যে একটি অ্যাকাউন্ট আছে?{' '}
+                  Already have an account?{' '}
                   <Link
                     href="/login"
                     className="font-semibold text-primary hover:underline inline-flex items-center gap-1"
                   >
                     <LogIn className="h-3 w-3" />
-                    <span>লগইন করুন</span>
+                    <span>Sign In</span>
                   </Link>
                 </div>
               </CardFooter>

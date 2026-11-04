@@ -11,21 +11,21 @@ export async function POST(request: Request) {
     // 1. Validation
     if (!name || name.trim().length < 2) {
       return NextResponse.json(
-        { error: 'আপনার পুরো নাম লিখুন (কমপক্ষে ২ অক্ষর)' },
+        { error: 'Please enter your full name (at least 2 characters)' },
         { status: 400 }
       );
     }
 
     if (!email || !email.includes('@')) {
       return NextResponse.json(
-        { error: 'সঠিক ইমেইল এড্রেস লিখুন' },
+        { error: 'Please enter a valid email address' },
         { status: 400 }
       );
     }
 
     if (!password || password.length < 6) {
       return NextResponse.json(
-        { error: 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে' },
+        { error: 'Password must be at least 6 characters long' },
         { status: 400 }
       );
     }
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
     if (existingUser) {
       return NextResponse.json(
-        { error: 'এই ইমেইল দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট রয়েছে। দয়া করে লগইন করুন।' },
+        { error: 'An account with this email address already exists. Please sign in instead.' },
         { status: 400 }
       );
     }
@@ -88,11 +88,11 @@ export async function POST(request: Request) {
         );
         return NextResponse.json({
           success: true,
-          message: 'ভেরিফিকেশন কোড তৈরি হয়েছে (Resend টেস্ট মোড)।',
+          message: 'Verification code generated (Resend Test Mode).',
           devMode: true,
           devOtp: otp,
           warning:
-            'Resend ফ্রি টেস্ট ডোমেইনে সরাসরি ইমেইল শুধু mdrockyislam.office@gmail.com এ যায়। টেস্ট সম্পন্ন করতে নিচে ওটিপি কোডটি প্রদান করা হয়েছে।',
+            'Resend free test domain delivers actual emails only to mdrockyislam.office@gmail.com. For testing with other emails, the OTP is displayed below.',
         });
       }
 
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
         {
           error:
             sendResult.error ||
-            'ইমেইল পাঠাতে সমস্যা হয়েছে। আপনার Resend API কী বা ডোমেইন কনফিগারেশন চেক করুন।',
+            'Failed to send verification email. Please check your Resend configuration.',
         },
         { status: 500 }
       );
@@ -108,16 +108,15 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `${normalizedEmail} এ ৬-ডিজিটের ভেরিফিকেশন কোড পাঠানো হয়েছে।`,
+      message: `A 6-digit verification code has been sent to ${normalizedEmail}.`,
       devMode: sendResult.devMode || false,
       devOtp: sendResult.devMode ? otp : undefined,
     });
   } catch (error: any) {
     console.error('Send OTP error:', error);
     return NextResponse.json(
-      { error: error?.message || 'ওটিপি পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।' },
+      { error: error?.message || 'Failed to send verification code. Please try again.' },
       { status: 500 }
     );
   }
 }
-
